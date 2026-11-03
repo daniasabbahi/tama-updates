@@ -185,14 +185,18 @@ jobs:
           json.dump(tama_update.sign_manifest(k, m), open(os.path.join(feed, "tama-update.json"), "w"))
           PY
           )
-          (cd work/feed && python -m http.server 8999 --bind 127.0.0.1 >/dev/null 2>&1 &)
-          curl -fsS -o /dev/null http://127.0.0.1:8999/tama-update.json && echo "test feed is up"
-          sleep 2
+          nohup python -m http.server 8999 --bind 127.0.0.1 --directory "$PWD/work/feed" > "$RUNNER_TEMP/feed.log" 2>&1 < /dev/null &
+          for i in $(seq 1 20); do
+            curl -fsS -m 5 -o /dev/null http://127.0.0.1:8999/tama-update.json && { echo "test feed is up"; break; }
+            sleep 1
+          done
+          python -c "import urllib.request as u; print('python can read the feed:', len(u.urlopen('http://127.0.0.1:8999/tama-update.json', timeout=10).read()))"
           open "$APP"
           sleep 75
           screencapture -x "$OUT/screenshot-1-${{ matrix.arch }}.png" || true
           ls -la "$D" "$D/program" || true
           tail -20 "$D/tama_window.log" || true
+          tail -20 "$RUNNER_TEMP/feed.log" || true
           osascript -e 'quit app "TAMA"' || true
           sleep 20
           ps aux | grep -i "[T]AMA.app" && echo "WARNING: TAMA still running after closing" || echo "no TAMA left running"
