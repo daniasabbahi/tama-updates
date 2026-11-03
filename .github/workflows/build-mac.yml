@@ -146,6 +146,14 @@ jobs:
           osascript -e 'quit app "TAMA"' || true
           sleep 25
           echo "after closing:"; ps aux | grep -i "[T]AMA.app" || echo "no TAMA left running"
+          # keep the screenshot on the branch "mac-test-shots" so it can be looked at
+          SHOT="../../out/screenshot-${{ matrix.arch }}.png"
+          if [ -f "$SHOT" ]; then
+            B64=$(base64 -i "$SHOT")
+            SHA=$(gh api "repos/$REPO/contents/shots/screenshot-${{ matrix.arch }}.png?ref=mac-test-shots" --jq .sha 2>/dev/null || true)
+            gh api -X PUT "repos/$REPO/contents/shots/screenshot-${{ matrix.arch }}.png" -f message="test screenshot" \
+              -f content="$B64" -f branch=mac-test-shots ${SHA:+-f sha=$SHA} >/dev/null || echo "screenshot not saved"
+          fi
 
       - name: Package (zip for updates, dmg for testers)
         run: |
