@@ -1,0 +1,157 @@
+# Builds the Mac version of TAMA (Apple silicon and Intel) on GitHub's Macs.
+# Started by "Publish update.bat" (publish_mac.py) on Dania's PC, right after it published the
+# Windows version as release v<version>. It reads the program's source from that release
+# (mac-build-source.bin, encrypted with the TAMA_SOURCE_KEY secret, so nobody else can read it),
+# builds TAMA.app, checks that it starts, and adds to the same release:
+#   TAMA-<version>-mac-<arch>.zip     (used by automatic updates)
+#   TAMA-Mac-<Apple silicon|Intel>-<version>.dmg   (for testers to install once)
+#   mac-<arch>.json                   (fingerprint, signed into tama-update.json by publish_mac.py)
+# The update file itself is signed on Dania's PC; the private key never comes here.
+name: Build TAMA for Mac
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "TAMA version (the release is v<version>)"
+        required: true
+      test:
+        description: "Test build from mac_build/test (no release, files kept as run artifacts)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mac-${{ inputs.version }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            label: Apple-silicon
+          - runner: macos-15-intel
+            arch: x86_64
+            label: Intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    env:
+      V: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ inputs.test }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Get the program source
+        env:
+          TAMA_SOURCE_KEY: ${{ secrets.TAMA_SOURCE_KEY }}
+          TEST: ${{ inputs.test }}
+        run: |
+          set -e
+          python -m pip install --quiet --upgrade pip cryptography
+          mkdir -p work
+          if [ "$TEST" = "true" ]; then
+            mkdir -p work/src
+            cp -R mac_build/test/. work/src/
+            python - <<'PY'
+          import base64
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          raw = Ed25519PrivateKey.generate().public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+          open("work/src/packaging/public_key.txt", "w").write(base64.urlsafe_b64encode(raw).decode().rstrip("="))
+          PY
+          else
+            gh release download "v$V" -R "$REPO" -p mac-build-source.bin -D work
+            python - <<'PY'
+          import io, os, zipfile
+          from cryptography.fernet import Fernet
+          data = Fernet(os.environ["TAMA_SOURCE_KEY"].encode()).decrypt(open("work/mac-build-source.bin", "rb").read())
+          zipfile.ZipFile(io.BytesIO(data)).extractall("work/src")
+          PY
+            rm work/mac-build-source.bin
+          fi
+          ls work/src work/src/packaging
+
+      - name: Install the libraries
+        run: |
+          cd work/src
+          # the same versions as on Dania's PC, minus the Windows-only ones
+          grep -viE '^(pywin32|pywin32-ctypes|pythonnet|clr[-_]loader|comtypes|pefile|wmi|pyinstaller|pyinstaller-hooks-contrib|pywinpty|winshell)([=<> ;@]|$)' requirements-windows.txt | grep -v '^-e ' > req-mac.txt || true
+          if ! python -m pip install -r req-mac.txt; then
+            echo "Some fixed versions are not available for Mac; installing one by one"
+            while read -r line; do
+              [ -z "$line" ] && continue
+              python -m pip install "$line" || python -m pip install "${line%%==*}" || echo "skipped $line"
+            done < req-mac.txt
+          fi
+          python -m pip install pyinstaller pywebview cryptography pillow
+          python -m pip list
+
+      - name: Build TAMA.app
+        run: |
+          cd work/src/packaging
+          TAMA_VERSION="$V" python -m PyInstaller --noconfirm --clean tama.spec
+          ls dist
+          test -x dist/TAMA.app/Contents/MacOS/TAMA
+
+      - name: Check that TAMA starts
+        run: |
+          cd work/src/packaging
+          APP=dist/TAMA.app/Contents/MacOS/TAMA
+          "$APP" --selftest
+          export TAMA_DATA_DIR="$RUNNER_TEMP/tama-data"
+          mkdir -p "$TAMA_DATA_DIR"
+          "$APP" --server 8765 &
+          ok=
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8765/_stcore/health >/dev/null 2>&1; then ok=1; break; fi
+            sleep 2
+          done
+          cat "$HOME/Library/Application Support/TAMA/tama.log" 2>/dev/null | tail -40 || true
+          kill %1 || true
+          [ -n "$ok" ] || { echo "TAMA did not start"; exit 1; }
+          echo "TAMA started fine"
+
+      - name: Package (zip for updates, dmg for testers)
+        run: |
+          cd work/src/packaging
+          ZIP="TAMA-$V-mac-${{ matrix.arch }}.zip"
+          DMG="TAMA-Mac-${{ matrix.label }}-$V.dmg"
+          mkdir -p ../../out
+          ditto -c -k --keepParent dist/TAMA.app "../../out/$ZIP"
+          mkdir -p dmg
+          cp -R dist/TAMA.app dmg/
+          ln -s /Applications dmg/Applications
+          cp "READ ME - for Mac users.txt" "dmg/READ ME.txt" 2>/dev/null || true
+          hdiutil create -volname "TAMA" -srcfolder dmg -ov -format UDZO "../../out/$DMG"
+          cd ../../out
+          python - "$ZIP" "${{ matrix.arch }}" <<'PY'
+          import hashlib, json, os, sys
+          z, arch = sys.argv[1], sys.argv[2]
+          h = hashlib.sha256(open(z, "rb").read()).hexdigest()
+          json.dump({"arch": arch, "file": z, "sha256": h, "size": os.path.getsize(z)}, open(f"mac-{arch}.json", "w"))
+          print(open(f"mac-{arch}.json").read())
+          PY
+          ls -la
+
+      - name: Add to the release
+        if: ${{ !inputs.test }}
+        run: gh release upload "v$V" work/out/* -R "$REPO" --clobber
+
+      - name: Keep test files
+        if: ${{ inputs.test }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tama-mac-${{ matrix.arch }}
+          path: work/out/*
+          retention-days: 7
