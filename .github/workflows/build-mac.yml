@@ -58,7 +58,7 @@ jobs:
           TEST: ${{ inputs.test }}
         run: |
           set -e
-          python -m pip install --quiet --upgrade pip cryptography
+          python -m pip install --quiet --upgrade pip && python -m pip install --quiet --only-binary=:all: cryptography
           mkdir -p work
           if [ "$TEST" = "true" ]; then
             mkdir -p work/src
@@ -67,8 +67,12 @@ jobs:
           import base64
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-          raw = Ed25519PrivateKey.generate().public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+          k = Ed25519PrivateKey.generate()
+          raw = k.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
           open("work/src/packaging/public_key.txt", "w").write(base64.urlsafe_b64encode(raw).decode().rstrip("="))
+          open("work/test_private_key.pem", "wb").write(k.private_bytes(serialization.Encoding.PEM,
+              serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+          open("work/src/packaging/TAMA settings.txt", "w").write("update_url = http://localhost:8999/tama-update.json\n")
           PY
           else
             gh release download "v$V" -R "$REPO" -p mac-build-source.bin -D work
@@ -87,6 +91,9 @@ jobs:
           cd work/src
           # the same versions as on Dania's PC, minus the Windows-only ones
           grep -viE '^(pywin32|pywin32-ctypes|pythonnet|clr[-_]loader|comtypes|pefile|wmi|pyinstaller|pyinstaller-hooks-contrib|pywinpty|winshell)([=<> ;@]|$)' requirements-windows.txt | grep -v '^-e ' > req-mac.txt || true
+          # use ready-made Mac packages (wheels); one compiled here can clash with the libraries
+          # PyInstaller packs (seen on Intel: cryptography built against another OpenSSL)
+          export PIP_PREFER_BINARY=1
           if ! python -m pip install -r req-mac.txt; then
             echo "Some fixed versions are not available for Mac; installing one by one"
             while read -r line; do
@@ -95,6 +102,10 @@ jobs:
             done < req-mac.txt
           fi
           python -m pip install pyinstaller pywebview cryptography pillow
+          # cryptography (licence keys, PDFs) must be the ready-made one with its own OpenSSL inside
+          python -m pip install --force-reinstall --no-deps --only-binary=:all: \
+            "cryptography==$(python -c 'import importlib.metadata as m; print(m.version("cryptography"))')" \
+            || python -m pip install --force-reinstall --no-deps --only-binary=:all: cryptography
           python -m pip list
 
       - name: Build TAMA.app
@@ -143,6 +154,62 @@ jobs:
           print(open(f"mac-{arch}.json").read())
           PY
           ls -la
+
+      - name: "Test only: open TAMA, let it update itself, open it again, take screenshots"
+        if: ${{ inputs.test }}
+        run: |
+          set -x
+          OUT="$PWD/work/out"
+          D="$HOME/Library/Application Support/TAMA"
+          APP="$PWD/work/src/packaging/dist/TAMA.app"
+          rm -rf "$D"
+          # a pretend newer version 9999 (the same zip), in a signed update file on this Mac
+          mkdir -p work/feed
+          cp "$OUT"/TAMA-*-mac-${{ matrix.arch }}.zip work/feed/
+          (cd work/src/packaging && python - "$PWD/../../feed" "$PWD/../../test_private_key.pem" <<'PY'
+          import glob, json, os, sys
+          sys.path.insert(0, ".")
+          import tama_update
+          from cryptography.hazmat.primitives import serialization
+          feed, pem = sys.argv[1], sys.argv[2]
+          k = serialization.load_pem_private_key(open(pem, "rb").read(), password=None)
+          z = os.path.basename(glob.glob(os.path.join(feed, "*.zip"))[0])
+          e = {"file": z, "sha256": tama_update.sha256_of(os.path.join(feed, z)), "size": os.path.getsize(os.path.join(feed, z))}
+          m = {"app": "TAMA", "version": "9999", "file": "TAMA-Setup-9999.exe", "sha256": "0" * 64, "size": 1,
+               "notes": "test", "published": "now", "mac": {"arm64": e, "x86_64": e}}
+          json.dump(tama_update.sign_manifest(k, m), open(os.path.join(feed, "tama-update.json"), "w"))
+          PY
+          )
+          (cd work/feed && python -m http.server 8999 >/dev/null 2>&1 &)
+          sleep 2
+          open "$APP"
+          sleep 75
+          screencapture -x "$OUT/screenshot-1-${{ matrix.arch }}.png" || true
+          ls -la "$D" "$D/program" || true
+          tail -20 "$D/tama_window.log" || true
+          osascript -e 'quit app "TAMA"' || true
+          sleep 20
+          ps aux | grep -i "[T]AMA.app" && echo "WARNING: TAMA still running after closing" || echo "no TAMA left running"
+          test -x "$D/program/9999/TAMA.app/Contents/MacOS/TAMA" || { echo "UPDATE NOT UNPACKED"; exit 1; }
+          echo "update was downloaded and unpacked"
+          open "$APP"
+          sleep 60
+          screencapture -x "$OUT/screenshot-2-${{ matrix.arch }}.png" || true
+          ps aux | grep -i "[T]AMA"
+          ps aux | grep "[p]rogram/9999/TAMA.app/Contents/MacOS/TAMA" || { echo "NEW VERSION NOT STARTED"; tail -30 "$D/tama_window.log"; exit 1; }
+          echo "the newer version runs"
+          cat "$D/program/9999/starts.json" 2>/dev/null && echo "(start counter not reset)" || echo "start counter reset: ok"
+          osascript -e 'quit app "TAMA"' || true
+          sleep 20
+          ps aux | grep -i "[T]AMA" || echo "no TAMA left running"
+          for f in "$OUT"/screenshot-*.png; do
+            n=$(basename "$f")
+            sha=$(gh api "repos/$REPO/contents/shots/$n?ref=mac-test-shots" --jq .sha 2>/dev/null | grep -E '^[0-9a-f]{40}$' || true)
+            base64 -i "$f" | tr -d '\n' > b64.txt
+            jq -n --arg m "test screenshot" --rawfile c b64.txt --arg b mac-test-shots --arg s "$sha" \
+              '{message:$m, content:$c, branch:$b} + (if $s == "" then {} else {sha:$s} end)' > body.json
+            gh api -X PUT "repos/$REPO/contents/shots/$n" --input body.json >/dev/null && echo "saved $n" || echo "$n not saved"
+          done
 
       - name: Add to the release
         if: ${{ !inputs.test }}
