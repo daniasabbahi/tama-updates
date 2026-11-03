@@ -122,6 +122,24 @@ jobs:
           [ -n "$ok" ] || { echo "TAMA did not start"; exit 1; }
           echo "TAMA started fine"
 
+      - name: Open the TAMA window and take a screenshot (test builds only)
+        if: ${{ inputs.test }}
+        run: |
+          cd work/src/packaging
+          open dist/TAMA.app
+          sleep 60
+          mkdir -p ../../out
+          screencapture -x "../../out/screenshot-${{ matrix.arch }}.png" || true
+          D="$HOME/Library/Application Support/TAMA"
+          ls -la "$D" "$D/windows" || true
+          cat "$D/running.json" || true
+          tail -30 "$D/tama.log" || true
+          tail -30 "$D/tama_window.log" || true
+          ps aux | grep -i "[T]AMA" || true
+          osascript -e 'quit app "TAMA"' || true
+          sleep 25
+          echo "after closing:"; ps aux | grep -i "[T]AMA.app" || echo "no TAMA left running"
+
       - name: Package (zip for updates, dmg for testers)
         run: |
           cd work/src/packaging
