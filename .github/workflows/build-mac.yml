@@ -58,7 +58,7 @@ jobs:
           TEST: ${{ inputs.test }}
         run: |
           set -e
-          python -m pip install --quiet --upgrade pip cryptography
+          python -m pip install --quiet --upgrade pip && python -m pip install --quiet --only-binary=:all: cryptography
           mkdir -p work
           if [ "$TEST" = "true" ]; then
             mkdir -p work/src
