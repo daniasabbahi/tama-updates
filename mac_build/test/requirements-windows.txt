@@ -1,0 +1,17 @@
+streamlit>=1.46
+pandas==2.2.3
+numpy
+openpyxl
+pillow
+python-docx
+reportlab
+pdfplumber
+pypdf
+pypdfium2
+arabic-reshaper
+python-bidi
+anthropic
+pywebview
+pywin32==308
+pythonnet==3.0.5
+clr_loader==0.2.7

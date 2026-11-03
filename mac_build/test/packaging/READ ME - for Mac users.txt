@@ -1,0 +1,53 @@
+TAMA for Mac - Teaching, Assessment, Measuring Achievement
+===========================================================
+
+Which file do I need?
+  Apple menu () > About This Mac. If "Chip" says Apple M1, M2, M3, M4 ... use
+  "TAMA-Mac-Apple-silicon-....dmg". If it says "Processor ... Intel", use "TAMA-Mac-Intel-....dmg".
+  Not sure? Use the Intel one: it runs on every Mac (a newer Mac may first ask to install
+  "Rosetta"; click Install), and TAMA switches itself to the faster version with its first update.
+
+Installing (only once)
+  1. Double-click the .dmg file. A window opens with TAMA and the Applications folder.
+  2. Drag TAMA onto the Applications folder. Then close the window and eject "TAMA"
+     (the drive on the desktop or in the Finder sidebar).
+  3. Open TAMA from Applications (or Launchpad).
+
+The first time you open TAMA, the Mac warns you
+  TAMA is not bought from the App Store and not signed with a paid Apple certificate, so the Mac
+  shows a message like "Apple could not verify TAMA is free of malware" or "TAMA cannot be opened".
+  This is normal for small apps. Do this once:
+    a. Click "Done" (or "OK"). Do NOT click "Move to Trash".
+    b. Open System Settings > Privacy & Security. Scroll down to Security. You will see
+       "TAMA was blocked to protect your Mac". Click "Open Anyway", then type your Mac password.
+    c. Click "Open Anyway" once more. From now on TAMA opens normally.
+  On an older Mac (macOS 14 Sonoma or earlier) you can instead right-click TAMA in Applications,
+  choose Open, and click Open.
+
+  If nothing helps: open the Terminal app, paste this line and press Return, then open TAMA again:
+      xattr -cr /Applications/TAMA.app
+
+Using TAMA
+  TAMA opens in its own window. The first start can take up to a minute. Close the window
+  (or press Cmd+Q) to close TAMA.
+
+First time: licence key
+  TAMA shows a "computer code" and a short form. Send your request to Dania; she sends back a
+  licence key by e-mail. Paste the key into TAMA and click Activate.
+  To enter a new key later: menu "Licence" > "Enter or replace licence key".
+
+Your data
+  Everything you enter is saved on this Mac in the folder
+      ~/Library/Application Support/TAMA
+  (in the Finder: menu Go > Go to Folder..., paste the line above, press Return). Updates never
+  change your data. To keep a backup, use "Download all my data" in TAMA, or copy the file
+  app_data.json from that folder.
+
+Updates
+  You do not need to do anything, and you never need to install TAMA again. When Dania publishes
+  a new version, TAMA downloads it quietly in the background while you work (the window title
+  shows "Update ... is ready"). The next time you close TAMA and open it again, the new version
+  opens. Your data and your licence key stay exactly as they are.
+  This needs internet; without internet TAMA simply works with the version you have.
+
+TAMA works without internet.

@@ -1,0 +1,2 @@
+# Withdrawn licence keys. One key number per line (for example K0007).
+# The Key Maker adds lines here when you withdraw a key. They take effect in the next version you build.
