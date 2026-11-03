@@ -87,6 +87,9 @@ jobs:
           cd work/src
           # the same versions as on Dania's PC, minus the Windows-only ones
           grep -viE '^(pywin32|pywin32-ctypes|pythonnet|clr[-_]loader|comtypes|pefile|wmi|pyinstaller|pyinstaller-hooks-contrib|pywinpty|winshell)([=<> ;@]|$)' requirements-windows.txt | grep -v '^-e ' > req-mac.txt || true
+          # use ready-made Mac packages (wheels); one compiled here can clash with the libraries
+          # PyInstaller packs (seen on Intel: cryptography built against another OpenSSL)
+          export PIP_PREFER_BINARY=1
           if ! python -m pip install -r req-mac.txt; then
             echo "Some fixed versions are not available for Mac; installing one by one"
             while read -r line; do
@@ -95,6 +98,10 @@ jobs:
             done < req-mac.txt
           fi
           python -m pip install pyinstaller pywebview cryptography pillow
+          # cryptography (licence keys, PDFs) must be the ready-made one with its own OpenSSL inside
+          python -m pip install --force-reinstall --no-deps --only-binary=:all: \
+            "cryptography==$(python -c 'import importlib.metadata as m; print(m.version("cryptography"))')" \
+            || python -m pip install --force-reinstall --no-deps --only-binary=:all: cryptography
           python -m pip list
 
       - name: Build TAMA.app
