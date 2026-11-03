@@ -72,7 +72,7 @@ jobs:
           open("work/src/packaging/public_key.txt", "w").write(base64.urlsafe_b64encode(raw).decode().rstrip("="))
           open("work/test_private_key.pem", "wb").write(k.private_bytes(serialization.Encoding.PEM,
               serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
-          open("work/src/packaging/TAMA settings.txt", "w").write("update_url = http://localhost:8999/tama-update.json\n")
+          open("work/src/packaging/TAMA settings.txt", "w").write("update_url = http://127.0.0.1:8999/tama-update.json\n")
           PY
           else
             gh release download "v$V" -R "$REPO" -p mac-build-source.bin -D work
@@ -144,7 +144,12 @@ jobs:
           cp -R dist/TAMA.app dmg/
           ln -s /Applications dmg/Applications
           cp "READ ME - for Mac users.txt" "dmg/READ ME.txt" 2>/dev/null || true
-          hdiutil create -volname "TAMA" -srcfolder dmg -ov -format UDZO "../../out/$DMG"
+          # hdiutil sometimes says "Resource busy" on GitHub's Macs; try a few times
+          for i in 1 2 3 4 5; do
+            hdiutil create -volname "TAMA" -srcfolder dmg -ov -format UDZO "../../out/$DMG" && break
+            [ "$i" = 5 ] && exit 1
+            sleep 15
+          done
           cd ../../out
           python - "$ZIP" "${{ matrix.arch }}" <<'PY'
           import hashlib, json, os, sys
@@ -180,7 +185,8 @@ jobs:
           json.dump(tama_update.sign_manifest(k, m), open(os.path.join(feed, "tama-update.json"), "w"))
           PY
           )
-          (cd work/feed && python -m http.server 8999 >/dev/null 2>&1 &)
+          (cd work/feed && python -m http.server 8999 --bind 127.0.0.1 >/dev/null 2>&1 &)
+          curl -fsS -o /dev/null http://127.0.0.1:8999/tama-update.json && echo "test feed is up"
           sleep 2
           open "$APP"
           sleep 75
