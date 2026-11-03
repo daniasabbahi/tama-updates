@@ -120,6 +120,16 @@ jobs:
       - name: Build TAMA.app
         run: |
           cd work/src/packaging
+          # older tama.spec: the start check should only expect libraries that are installed
+          python - <<'PY'
+          s = open("tama.spec", encoding="utf-8").read()
+          old = 'f.write(f"APP_IMPORTS = {tuple(sorted(app_imports - set(sys.stdlib_module_names)))!r}\\n")'
+          new = ('import importlib.util; f.write(f"APP_IMPORTS = {tuple(sorted(n for n in app_imports - set(sys.stdlib_module_names) '
+                 'if importlib.util.find_spec(n)))!r}\\n")')
+          if old in s:
+              open("tama.spec", "w", encoding="utf-8").write(s.replace(old, new))
+              print("tama.spec: start check limited to installed libraries")
+          PY
           TAMA_VERSION="$V" python -m PyInstaller --noconfirm --clean tama.spec
           ls dist
           test -x dist/TAMA.app/Contents/MacOS/TAMA
