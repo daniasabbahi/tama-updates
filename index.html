@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>TAMA online test</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.11.0/build/stlite.css" id="stcss">
+<style>
+  /* start card, then the app fills the page */
+  :root { --bg:#f4f6fa; --card:#ffffff; --ink:#14365d; --text:#1f2937; --muted:#5b6676; --accent:#1b998b; --line:#dfe5ee; --bad:#b42318; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  [hidden] { display:none !important; }
+  #start { max-width:600px; margin:7vh auto; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px; display:flex; flex-direction:column; gap:12px; }
+  .band { background:var(--ink); color:#fff; border-radius:10px; padding:16px 18px; }
+  .band small { letter-spacing:.12em; text-transform:uppercase; font-size:11px; opacity:.8; }
+  .band h1 { margin:4px 0 0; font-size:22px; }
+  p { margin:0; line-height:1.5; }
+  .muted { color:var(--muted); font-size:14px; }
+  label { font-weight:600; font-size:14px; }
+  input[type=password] { font:inherit; padding:11px 12px; border:1px solid var(--line); border-radius:9px; width:100%; box-sizing:border-box; }
+  button { font:inherit; border-radius:10px; padding:12px 18px; cursor:pointer; }
+  button:focus-visible, input:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .primary { background:var(--accent); border:1px solid var(--accent); color:#fff; font-size:17px; font-weight:600; }
+  .secondary { background:#fff; color:var(--ink); border:1px solid var(--ink); }
+  .where { font-size:14px; background:#eef6f5; border-radius:9px; padding:10px 12px; }
+  #err { color:var(--bad); font-size:14px; }
+  #bar { position:fixed; z-index:99999; right:12px; bottom:10px; background:var(--card); border:1px solid var(--line);
+         border-radius:999px; padding:6px 14px; font-size:12px; color:var(--muted); }
+  #bar b { color:var(--accent); }
+</style>
+</head>
+<body>
+<div id="start">
+  <div class="card">
+    <div class="band"><small>Teaching · Assessment · Measuring achievement</small><h1>TAMA online (test)</h1></div>
+    <p>TAMA runs inside your web browser. Your courses and marks stay on this computer and are not sent to any server.</p>
+    <label for="pw">Test password</label>
+    <input type="password" id="pw" autocomplete="current-password">
+    <div id="err" hidden></div>
+    <div class="where" id="folderbox">Your data is kept: <b id="where">inside this browser on this computer</b>
+      <div style="margin-top:8px"><button class="secondary" id="pick" type="button">Keep my data in a folder on my computer…</button></div>
+    </div>
+    <div class="where" id="nofolder" hidden>This browser keeps your data inside the browser on this computer. (Chrome or Edge can also keep it in a folder you choose.) For a spare copy, use “Download all my data” on TAMA's Settings page.</div>
+    <button class="primary" id="go" type="button">Open TAMA</button>
+    <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
+  </div>
+</div>
+<div id="bar" hidden></div>
+<div id="root"></div>
+
+<script type="module">
+const LOCAL = new URLSearchParams(location.search).get("local");          // only for testing on a computer without internet
+const STLITE = LOCAL ? "./stlite/stlite.js" : "https://cdn.jsdelivr.net/npm/@stlite/browser@1.11.0/build/stlite.js";
+if (LOCAL) document.getElementById("stcss").href = "./stlite/stlite.css";
+const DATA_DIR = "/home/pyodide/tama_data";
+const DATA_PATH = DATA_DIR + "/app_data.json";
+const hasFolderApi = "showDirectoryPicker" in window;
+const $ = id => document.getElementById(id);
+
+// ---- small settings store in this browser (the chosen folder link and the password)
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open("tama-web-settings", 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function kvGet(k) { try { const db = await idb(); return await new Promise(r => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(undefined); }); } catch { return undefined; } }
+async function kvSet(k, v) { try { const db = await idb(); db.transaction("kv", "readwrite").objectStore("kv").put(v, k); } catch {} }
+
+let folder = null;
+function showFolder() { $("where").textContent = folder ? "in the folder “" + folder.name + "” on this computer" : "inside this browser on this computer";
+  $("pick").textContent = folder ? "Choose a different folder…" : "Keep my data in a folder on my computer…"; }
+if (!hasFolderApi) { $("folderbox").hidden = true; $("nofolder").hidden = false; }
+else { folder = (await kvGet("folder")) || null; showFolder(); }
+$("pw").value = (await kvGet("pw")) || "";
+
+$("pick").onclick = async () => {
+  try { folder = await window.showDirectoryPicker({ id: "tama-data", mode: "readwrite" }); await kvSet("folder", folder); showFolder(); } catch (e) {}
+};
+
+// ---- open the locked app file with the password
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function unlock(pw) {
+  const lk = await (await fetch("./app.locked.json?v=" + Date.now(), { cache: "no-store" })).json();
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: b64(lk.salt), iterations: lk.iter }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const zipped = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(lk.iv) }, key, b64(lk.data));   // fails when the password is wrong
+  const plain = new Blob([zipped]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(plain).text();
+}
+
+async function readFolderData() {
+  if (!folder) return null;
+  try {
+    if ((await folder.queryPermission({ mode: "readwrite" })) !== "granted" &&
+        (await folder.requestPermission({ mode: "readwrite" })) !== "granted") { folder = null; return null; }
+    const fh = await folder.getFileHandle("app_data.json", { create: false });
+    return await (await fh.getFile()).text();
+  } catch (e) { return null; }   // no file there yet
+}
+async function writeFolder(name, text) {
+  const fh = await folder.getFileHandle(name, { create: true });
+  const w = await fh.createWritable(); await w.write(text); await w.close();
+}
+
+$("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
+$("go").onclick = async () => {
+  $("err").hidden = true; $("go").disabled = true; $("go").textContent = "Opening TAMA…";
+  let code;
+  try { code = await unlock($("pw").value.trim()); }
+  catch (e) { $("err").textContent = "That password did not work. Check it and try again."; $("err").hidden = false;
+    $("go").disabled = false; $("go").textContent = "Open TAMA"; return; }
+  kvSet("pw", $("pw").value.trim());
+  const fromFolder = (await readFolderData()) || window.__tamaPreload || null;
+  const files = { "app.py": { data: code } };
+  if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
+  const { mount } = await import(STLITE);
+  $("start").hidden = true;
+  const app = mount({
+    entrypoint: "app.py",
+    files,
+    requirements: ["openpyxl", "python-docx", "pillow", "pypdf", "reportlab", "arabic-reshaper", "python-bidi==0.4.2"],
+    idbfsMountpoints: [DATA_DIR],
+    streamlitConfig: { "client.toolbarMode": "viewer", "theme.base": "light" },
+    ...(LOCAL ? { pyodideUrl: new URL("./pyodide-local/pyodide.mjs", location.href).href } : {}),
+  }, $("root"));
+  window.__tama = app;
+  // small repair for the browser edition of Streamlit (some tables need it); TAMA itself is unchanged
+  (async () => { for (let i = 0; i < 300; i++) { try { await app.runPython(
+    "import streamlit.elements.widgets.data_editor as _de\nclass _NoSchema:\n    schema = ()\n_de.arrow_table = _NoSchema()\n"); return; }
+    catch (e) { await new Promise(r => setTimeout(r, 500)); } } })();
+
+  // ---- copy the data to the chosen folder whenever TAMA saves (checked every 3 seconds)
+  if (folder) {
+    const bar = $("bar"); bar.hidden = false; bar.textContent = "Data folder: " + folder.name;
+    let last = fromFolder;
+    setInterval(async () => {
+      try {
+        const t = await app.readFile(DATA_PATH, { encoding: "utf8" });
+        if (t && t !== last) { await writeFolder("app_data.json", t); last = t;
+          bar.innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); bar.querySelector("b").textContent = folder.name; }
+      } catch (e) {}
+    }, 3000);
+  }
+};
+</script>
+</body>
+</html>
