@@ -37,6 +37,10 @@
   #bar b { color:var(--accent); }
   /* TAMA: no "Press Enter to submit form" hint over typed text */
   [data-testid="InputInstructions"] { display:none !important; }
+  /* the empty scroll-to-top helper should not add a gap under "Fit tables to page" */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-scroll_top_box) { position:absolute !important; height:0 !important; overflow:hidden !important; margin:0 !important; }
+  /* the chart tools (Show chart, Download ...) stay above the data view, so the way back to the chart can be seen */
+  [data-testid="stElementToolbar"] { z-index: 30 !important; }
 </style>
 </head>
 <body>
@@ -228,6 +232,13 @@ $("go").onclick = async () => {
     ...(LOCAL ? { pyodideUrl: new URL("./pyodide-local/pyodide.mjs", location.href).href } : {}),
   }, $("root"));
   window.__tama = app;
+  // hidden helper boxes of TAMA (scripts with no height) should not leave empty gaps on the page
+  const tidy = () => document.querySelectorAll('#root [data-testid="stElementContainer"]').forEach(el => {
+    if (el.dataset.tamaTidy || !el.querySelector('iframe') || el.innerText.trim() || el.querySelector('canvas, img, input, button, table')) return;
+    if (el.getBoundingClientRect().height > 1) return;
+    el.dataset.tamaTidy = "1"; el.style.cssText += ';position:absolute;width:0;height:0;overflow:hidden;';
+  });
+  new MutationObserver(() => { clearTimeout(window.__tamaTidyT); window.__tamaTidyT = setTimeout(tidy, 200); }).observe($("root"), { childList: true, subtree: true });
   // small repair for the browser edition of Streamlit (some tables need it); TAMA itself is unchanged
   (async () => { for (let i = 0; i < 300; i++) { try { await app.runPython(
     "import streamlit.elements.widgets.data_editor as _de\nclass _NoSchema:\n    schema = ()\n_de.arrow_table = _NoSchema()\n"); return; }
