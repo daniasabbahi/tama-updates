@@ -26,6 +26,12 @@
   .secondary { background:#fff; color:var(--ink); border:1px solid var(--ink); }
   .where { font-size:14px; background:#eef6f5; border-radius:9px; padding:10px 12px; }
   #err { color:var(--bad); font-size:14px; }
+  .view { display:flex; flex-direction:column; gap:12px; }
+  .tabs { display:flex; gap:6px; }
+  .tab { flex:1; background:#fff; border:1px solid var(--line); color:var(--muted); padding:9px; }
+  .tab.on { border-color:var(--ink); color:var(--ink); font-weight:600; }
+  input[type=email] { font:inherit; padding:11px 12px; border:1px solid var(--line); border-radius:9px; width:100%; box-sizing:border-box; }
+  a { color:var(--ink); }
   #bar { position:fixed; z-index:99999; right:12px; bottom:10px; background:var(--card); border:1px solid var(--line);
          border-radius:999px; padding:6px 14px; font-size:12px; color:var(--muted); }
   #bar b { color:var(--accent); }
@@ -36,14 +42,44 @@
   <div class="card">
     <div class="band"><small>Teaching · Assessment · Measuring achievement</small><h1>TAMA online (test)</h1></div>
     <p>TAMA runs inside your web browser. Your courses and marks stay on this computer and are not sent to any server.</p>
-    <label for="pw">Test password</label>
-    <input type="password" id="pw" autocomplete="current-password">
+    <!-- sign in / create account -->
+    <div id="v-signin" class="view" hidden>
+      <div class="tabs"><button type="button" id="t-in" class="tab on">Sign in</button><button type="button" id="t-new" class="tab">Create account</button></div>
+      <label for="em">Email</label>
+      <input type="email" id="em" autocomplete="username" placeholder="name@kau.edu.sa">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" autocomplete="current-password">
+      <p class="muted" id="newnote" hidden>Free for KAU staff with an @kau.edu.sa email. We send a link to your email to confirm it is yours.</p>
+      <button class="primary" id="b-auth" type="button">Sign in</button>
+      <p class="muted"><a href="#" id="forgot">Forgot password?</a> · <a href="#" id="usetest">Use a test password</a></p>
+    </div>
+    <!-- waiting for the email link -->
+    <div id="v-verify" class="view" hidden>
+      <p>We sent a link to <b id="vmail"></b>. Open that email, click the link, then come back and press the button below. (Check the junk folder too.)</p>
+      <button class="primary" id="b-checked" type="button">I clicked the link</button>
+      <p class="muted"><a href="#" id="resend">Send the email again</a> · <a href="#" class="out">Sign out</a></p>
+    </div>
+    <!-- signed in but not allowed -->
+    <div id="v-nosub" class="view" hidden>
+      <p>You are signed in as <b id="nmail"></b>.</p>
+      <p>TAMA is free for KAU staff with an @kau.edu.sa email. For other users, subscriptions will open soon.</p>
+      <p class="muted"><a href="#" class="out">Sign out</a></p>
+    </div>
+    <!-- test password (for trying TAMA before sign-in is ready) -->
+    <div id="v-test" class="view" hidden>
+      <label for="tpw">Test password</label>
+      <input type="password" id="tpw">
+      <p class="muted"><a href="#" id="backsign">Back to sign in</a></p>
+    </div>
     <div id="err" hidden></div>
+    <div id="v-ready" class="view" hidden>
+      <p class="muted" id="who"></p>
     <div class="where" id="folderbox">Your data is kept: <b id="where">inside this browser on this computer</b>
       <div style="margin-top:8px"><button class="secondary" id="pick" type="button">Keep my data in a folder on my computer…</button></div>
     </div>
     <div class="where" id="nofolder" hidden>This browser keeps your data inside the browser on this computer. (Chrome or Edge can also keep it in a folder you choose.) For a spare copy, use “Download all my data” on TAMA's Settings page.</div>
-    <button class="primary" id="go" type="button">Open TAMA</button>
+      <button class="primary" id="go" type="button">Open TAMA</button>
+    </div>
     <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
   </div>
 </div>
@@ -70,7 +106,62 @@ function showFolder() { $("where").textContent = folder ? "in the folder “" + 
   $("pick").textContent = folder ? "Choose a different folder…" : "Keep my data in a folder on my computer…"; }
 if (!hasFolderApi) { $("folderbox").hidden = true; $("nofolder").hidden = false; }
 else { folder = (await kvGet("folder")) || null; showFolder(); }
-$("pw").value = (await kvGet("pw")) || "";
+
+// ---- sign-in (Firebase): free for verified @kau.edu.sa emails, or for subscribers added by the owner
+import { initializeApp, getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         sendEmailVerification, sendPasswordResetEmail, signOut, reload, getFirestore, doc, getDoc } from "./firebase-bundle.js";
+const fbApp = initializeApp({ apiKey: "AIzaSyDNdIsV1T3aH1slwelMF05RApnRI_pwecA", authDomain: "tama-848ff.firebaseapp.com",
+  projectId: "tama-848ff", storageBucket: "tama-848ff.firebasestorage.app", messagingSenderId: "1091477469921", appId: "1:1091477469921:web:077855e2626d84e21515a0" });
+const auth = getAuth(fbApp), db = getFirestore(fbApp);
+let appKey = null, testMode = false, creating = false;
+const VIEWS = ["v-signin", "v-verify", "v-nosub", "v-test", "v-ready"];
+function show(...ids) { VIEWS.forEach(v => $(v).hidden = !ids.includes(v)); }
+function err(t) { $("err").textContent = t || ""; $("err").hidden = !t; }
+const isKau = e => /@kau\.edu\.sa$/i.test((e || "").trim());
+const MSG = { "auth/invalid-credential": "The email or password is not right.", "auth/wrong-password": "The email or password is not right.",
+  "auth/user-not-found": "There is no account with this email yet. Choose “Create account”.", "auth/email-already-in-use": "This email already has an account. Choose “Sign in”.",
+  "auth/weak-password": "Please use a password with at least 6 characters.", "auth/invalid-email": "Please check the email address.",
+  "auth/too-many-requests": "Too many tries. Please wait a few minutes and try again.", "auth/network-request-failed": "No internet connection. Please check it and try again." };
+const say = e => MSG[e && e.code] || ("Something went wrong (" + ((e && (e.code || e.message)) || "unknown") + ").");
+
+async function afterSignIn(user) {
+  err("");
+  if (testMode) return;
+  if (!user) { show("v-signin"); return; }
+  if (!user.emailVerified) { $("vmail").textContent = user.email; show("v-verify"); return; }
+  try {
+    const d = await getDoc(doc(db, "keys", "app"));
+    appKey = d.exists() ? d.data().k : null;
+  } catch (e) { appKey = null; }
+  if (appKey) { $("who").textContent = "Signed in as " + user.email + " · "; const a = document.createElement("a"); a.href = "#"; a.className = "out"; a.textContent = "Sign out"; $("who").appendChild(a); a.onclick = doOut; show("v-ready"); }
+  else { $("nmail").textContent = user.email; show("v-nosub"); }
+}
+async function doOut(e) { e && e.preventDefault(); testMode = false; await signOut(auth); }
+document.querySelectorAll(".out").forEach(a => a.onclick = doOut);
+onAuthStateChanged(auth, afterSignIn);
+
+function setTab(isNew) { creating = isNew; $("t-in").classList.toggle("on", !isNew); $("t-new").classList.toggle("on", isNew);
+  $("newnote").hidden = !isNew; $("b-auth").textContent = isNew ? "Create account" : "Sign in"; $("pw").autocomplete = isNew ? "new-password" : "current-password"; err(""); }
+$("t-in").onclick = () => setTab(false); $("t-new").onclick = () => setTab(true);
+$("b-auth").onclick = async () => {
+  const em = $("em").value.trim(), pw = $("pw").value; err("");
+  if (!em || !pw) { err("Please type your email and a password."); return; }
+  $("b-auth").disabled = true;
+  try {
+    if (creating) { const c = await createUserWithEmailAndPassword(auth, em, pw); await sendEmailVerification(c.user); afterSignIn(c.user); }
+    else await signInWithEmailAndPassword(auth, em, pw);
+  } catch (e) { err(say(e)); }
+  $("b-auth").disabled = false;
+};
+$("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("b-auth").click(); });
+$("b-checked").onclick = async () => { if (!auth.currentUser) return; await reload(auth.currentUser);
+  if (!auth.currentUser.emailVerified) err("The email is not confirmed yet. Click the link in the email first."); else afterSignIn(auth.currentUser); };
+$("resend").onclick = async e => { e.preventDefault(); try { await sendEmailVerification(auth.currentUser); err(""); $("resend").textContent = "Sent again"; } catch (x) { err(say(x)); } };
+$("forgot").onclick = async e => { e.preventDefault(); const em = $("em").value.trim();
+  if (!em) { err("Type your email first, then click “Forgot password?”."); return; }
+  try { await sendPasswordResetEmail(auth, em); err(""); $("forgot").textContent = "Password email sent"; } catch (x) { err(say(x)); } };
+$("usetest").onclick = e => { e.preventDefault(); testMode = true; err(""); $("who").textContent = ""; show("v-test", "v-ready"); };
+$("backsign").onclick = e => { e.preventDefault(); testMode = false; afterSignIn(auth.currentUser); };
 
 $("pick").onclick = async () => {
   try { folder = await window.showDirectoryPicker({ id: "tama-data", mode: "readwrite" }); await kvSet("folder", folder); showFolder(); } catch (e) {}
@@ -101,14 +192,13 @@ async function writeFolder(name, text) {
   const w = await fh.createWritable(); await w.write(text); await w.close();
 }
 
-$("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
+$("tpw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
 $("go").onclick = async () => {
   $("err").hidden = true; $("go").disabled = true; $("go").textContent = "Opening TAMA…";
   let code;
-  try { code = await unlock($("pw").value.trim()); }
-  catch (e) { $("err").textContent = "That password did not work. Check it and try again."; $("err").hidden = false;
+  try { code = await unlock(testMode ? $("tpw").value.trim() : appKey); }
+  catch (e) { err(testMode ? "That password did not work. Check it and try again." : "TAMA could not be opened. Please reload the page and try again.");
     $("go").disabled = false; $("go").textContent = "Open TAMA"; return; }
-  kvSet("pw", $("pw").value.trim());
   const fromFolder = (await readFolderData()) || window.__tamaPreload || null;
   const files = { "app.py": { data: code } };
   if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
