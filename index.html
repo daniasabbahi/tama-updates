@@ -35,12 +35,17 @@
   #bar { position:fixed; z-index:99999; right:12px; bottom:10px; background:var(--card); border:1px solid var(--line);
          border-radius:999px; padding:6px 14px; font-size:12px; color:var(--muted); }
   #bar b { color:var(--accent); }
+  #bar a { color:var(--accent); }
+  #bar .muted { font-size:12px; }
+  #loading { max-width:600px; margin:20vh auto; text-align:center; font-size:18px; color:var(--muted, #666); }
   /* TAMA: no "Press Enter to submit form" hint over typed text */
   [data-testid="InputInstructions"] { display:none !important; }
   /* the empty scroll-to-top helper should not add a gap under "Fit tables to page" */
   [data-testid="stLayoutWrapper"]:has(> .st-key-scroll_top_box) { position:absolute !important; height:0 !important; overflow:hidden !important; margin:0 !important; }
   /* the chart tools (Show chart, Download ...) stay above the data view, so the way back to the chart can be seen */
   [data-testid="stElementToolbar"] { z-index: 30 !important; }
+  /* in the "Show data" view the table box cut off its own tool row; let the tools show above the table so "Show chart" can be clicked */
+  [data-testid="stDataFrame"]:has([data-testid="stElementToolbar"] button[aria-label^="Show chart"]) { overflow: visible !important; }
 </style>
 </head>
 <body>
@@ -94,7 +99,8 @@
     <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
   </div>
 </div>
-<div id="bar" hidden></div>
+<div id="loading" hidden>Opening TAMA… (the first time takes about a minute)</div>
+<div id="bar" hidden><span id="barmsg"></span> <span class="muted"><span id="barwho"></span> · <a href="#" id="barstart">Start page</a> · <a href="#" id="barout">Sign out</a></span></div>
 <div id="root"></div>
 
 <script type="module">
@@ -124,7 +130,8 @@ import { initializeApp, getAuth, onAuthStateChanged, createUserWithEmailAndPassw
 const fbApp = initializeApp({ apiKey: "AIzaSyDNdIsV1T3aH1slwelMF05RApnRI_pwecA", authDomain: "tama-848ff.firebaseapp.com",
   projectId: "tama-848ff", storageBucket: "tama-848ff.firebasestorage.app", messagingSenderId: "1091477469921", appId: "1:1091477469921:web:077855e2626d84e21515a0" });
 const auth = getAuth(fbApp), db = getFirestore(fbApp);
-let appKey = null, testMode = false, creating = false;
+let appKey = null, testMode = false, creating = false, autoTried = false;
+const WANT_START = new URLSearchParams(location.search).has("start");   // ?start=1 shows the start page (folder, bring in courses)
 const VIEWS = ["v-signin", "v-verify", "v-nosub", "v-test", "v-ready"];
 function show(...ids) { VIEWS.forEach(v => $(v).hidden = !ids.includes(v)); }
 function err(t) { $("err").textContent = t || ""; $("err").hidden = !t; }
@@ -145,10 +152,11 @@ async function afterSignIn(user) {
     const d = await getDoc(doc(db, "keys", "app"));
     appKey = d.exists() ? d.data().k : null;
   } catch (e) { appKey = null; }
-  if (appKey) { $("who").textContent = "Signed in as " + user.email + " · "; const a = document.createElement("a"); a.href = "#"; a.className = "out"; a.textContent = "Sign out"; $("who").appendChild(a); a.onclick = doOut; show("v-ready"); }
+  if (appKey) { $("who").textContent = "Signed in as " + user.email + " · "; const a = document.createElement("a"); a.href = "#"; a.className = "out"; a.textContent = "Sign out"; $("who").appendChild(a); a.onclick = doOut; show("v-ready");
+    if (!autoTried && !WANT_START) { autoTried = true; $("start").hidden = true; $("loading").hidden = false; $("go").click(); } }
   else { $("nmail").textContent = user.email; show("v-nosub"); }
 }
-async function doOut(e) { e && e.preventDefault(); testMode = false; await signOut(auth); }
+async function doOut(e) { e && e.preventDefault(); testMode = false; await signOut(auth); if (window.__tama) location.href = location.pathname; }
 document.querySelectorAll(".out").forEach(a => a.onclick = doOut);
 onAuthStateChanged(auth, afterSignIn);
 
@@ -194,8 +202,9 @@ async function unlock(pw) {
 async function readFolderData() {
   if (!folder) return null;
   try {
-    if ((await folder.queryPermission({ mode: "readwrite" })) !== "granted" &&
-        (await folder.requestPermission({ mode: "readwrite" })) !== "granted") { folder = null; return null; }
+    if ((await folder.queryPermission({ mode: "readwrite" })) !== "granted") {
+      if (!navigator.userActivation || !navigator.userActivation.isActive) { folderWait = true; return null; }   // ask later, with a click on the bar
+      if ((await folder.requestPermission({ mode: "readwrite" })) !== "granted") { folder = null; return null; } }
     const fh = await folder.getFileHandle("app_data.json", { create: false });
     return await (await fh.getFile()).text();
   } catch (e) { return null; }   // no file there yet
@@ -205,7 +214,7 @@ async function writeFolder(name, text) {
   const w = await fh.createWritable(); await w.write(text); await w.close();
 }
 
-let imported = null;
+let imported = null, folderWait = false;
 $("importf").onchange = async () => { const f = $("importf").files[0]; if (!f) return;
   try { const t = (await f.text()).replace(/^\uFEFF/, "");   // TAMA files may contain NaN, so they are checked by shape, not parsed here
     if (!/^\s*\{/.test(t) || !t.includes('"tables"')) throw 0;
@@ -217,7 +226,7 @@ $("go").onclick = async () => {
   let code;
   try { code = await unlock(testMode ? $("tpw").value.trim() : appKey); }
   catch (e) { err(testMode ? "That password did not work. Check it and try again." : "TAMA could not be opened. Please reload the page and try again.");
-    $("go").disabled = false; $("go").textContent = "Open TAMA"; return; }
+    $("go").disabled = false; $("go").textContent = "Open TAMA"; $("start").hidden = false; $("loading").hidden = true; return; }
   const fromFolder = imported || (await readFolderData()) || window.__tamaPreload || null;
   const files = { "app.py": { data: code } };
   if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
@@ -245,14 +254,21 @@ $("go").onclick = async () => {
     catch (e) { await new Promise(r => setTimeout(r, 500)); } } })();
 
   // ---- copy the data to the chosen folder whenever TAMA saves (checked every 3 seconds)
+  const bar = $("bar");
+  if (!testMode && auth.currentUser) { bar.hidden = false; $("barwho").textContent = auth.currentUser.email; }
+  $("barstart").onclick = e => { e.preventDefault(); location.href = location.pathname + "?start=1"; };
+  $("barout").onclick = doOut;
   if (folder) {
-    const bar = $("bar"); bar.hidden = false; bar.textContent = "Data folder: " + folder.name;
+    bar.hidden = false; $("barmsg").textContent = "Data folder: " + folder.name;
+    if (folderWait) { $("barmsg").innerHTML = '<a href="#" id="reconn">Click here to keep saving to your folder “<b></b>”</a>'; $("barmsg").querySelector("b").textContent = folder.name;
+      $("reconn").onclick = async e => { e.preventDefault(); try { if ((await folder.requestPermission({ mode: "readwrite" })) === "granted") { folderWait = false; $("barmsg").textContent = "Data folder: " + folder.name; } } catch (x) {} }; }
     let last = fromFolder;
     setInterval(async () => {
+      if (folderWait) return;
       try {
         const t = await app.readFile(DATA_PATH, { encoding: "utf8" });
         if (t && t !== last) { await writeFolder("app_data.json", t); last = t;
-          bar.innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); bar.querySelector("b").textContent = folder.name; }
+          $("barmsg").innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); $("barmsg").querySelector("b").textContent = folder.name; }
       } catch (e) {}
     }, 3000);
   }
