@@ -78,6 +78,11 @@
       <div style="margin-top:8px"><button class="secondary" id="pick" type="button">Keep my data in a folder on my computer…</button></div>
     </div>
     <div class="where" id="nofolder" hidden>This browser keeps your data inside the browser on this computer. (Chrome or Edge can also keep it in a folder you choose.) For a spare copy, use “Download all my data” on TAMA's Settings page.</div>
+      <details class="where"><summary>Bring in my courses from TAMA on my computer</summary>
+        <p class="muted" style="margin-top:8px">Choose the file <b>app_data.json</b> (on Windows it is in the folder <b>%LOCALAPPDATA%\TAMA</b>; you can paste that into the address bar of the file window). It replaces what this browser has.</p>
+        <input type="file" id="importf" accept=".json,application/json" style="margin-top:8px">
+        <p class="muted" id="importok" hidden></p>
+      </details>
       <button class="primary" id="go" type="button">Open TAMA</button>
     </div>
     <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
@@ -192,6 +197,12 @@ async function writeFolder(name, text) {
   const w = await fh.createWritable(); await w.write(text); await w.close();
 }
 
+let imported = null;
+$("importf").onchange = async () => { const f = $("importf").files[0]; if (!f) return;
+  try { const t = (await f.text()).replace(/^\uFEFF/, "");   // TAMA files may contain NaN, so they are checked by shape, not parsed here
+    if (!/^\s*\{/.test(t) || !t.includes('"tables"')) throw 0;
+    imported = t; $("importok").textContent = "Ready: the courses in " + f.name + " will be loaded when you open TAMA."; $("importok").hidden = false; err(""); }
+  catch (e) { imported = null; err("That file is not a TAMA data file (app_data.json)."); } };
 $("tpw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
 $("go").onclick = async () => {
   $("err").hidden = true; $("go").disabled = true; $("go").textContent = "Opening TAMA…";
@@ -199,7 +210,7 @@ $("go").onclick = async () => {
   try { code = await unlock(testMode ? $("tpw").value.trim() : appKey); }
   catch (e) { err(testMode ? "That password did not work. Check it and try again." : "TAMA could not be opened. Please reload the page and try again.");
     $("go").disabled = false; $("go").textContent = "Open TAMA"; return; }
-  const fromFolder = (await readFolderData()) || window.__tamaPreload || null;
+  const fromFolder = imported || (await readFolderData()) || window.__tamaPreload || null;
   const files = { "app.py": { data: code } };
   if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
   const { mount } = await import(STLITE);
