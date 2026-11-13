@@ -63,7 +63,7 @@
     <div id="v-nosub" class="view" hidden>
       <p>You are signed in as <b id="nmail"></b>.</p>
       <p>TAMA is free for KAU staff with an @kau.edu.sa email. For other users, subscriptions will open soon.</p>
-      <p class="muted"><a href="#" class="out">Sign out</a></p>
+      <p class="muted"><a href="#" id="recheck">Check again</a> · <a href="#" class="out">Sign out</a></p>
     </div>
     <!-- test password (for trying TAMA before sign-in is ready) -->
     <div id="v-test" class="view" hidden>
@@ -135,6 +135,7 @@ async function afterSignIn(user) {
   if (!user) { show("v-signin"); return; }
   if (!user.emailVerified) { $("vmail").textContent = user.email; show("v-verify"); return; }
   try {
+    await user.getIdToken(true);   // refresh, so the database sees that the email is now confirmed
     const d = await getDoc(doc(db, "keys", "app"));
     appKey = d.exists() ? d.data().k : null;
   } catch (e) { appKey = null; }
@@ -166,6 +167,7 @@ $("forgot").onclick = async e => { e.preventDefault(); const em = $("em").value.
   if (!em) { err("Type your email first, then click “Forgot password?”."); return; }
   try { await sendPasswordResetEmail(auth, em); err(""); $("forgot").textContent = "Password email sent"; } catch (x) { err(say(x)); } };
 $("usetest").onclick = e => { e.preventDefault(); testMode = true; err(""); $("who").textContent = ""; show("v-test", "v-ready"); };
+$("recheck").onclick = e => { e.preventDefault(); afterSignIn(auth.currentUser); };
 $("backsign").onclick = e => { e.preventDefault(); testMode = false; afterSignIn(auth.currentUser); };
 
 $("pick").onclick = async () => {
