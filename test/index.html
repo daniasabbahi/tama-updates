@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>TAMA TEST VERSION</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.11.0/build/stlite.css" id="stcss">
+<style>
+  /* start card, then the app fills the page */
+  :root { --bg:#f4f6fa; --card:#ffffff; --ink:#14365d; --text:#1f2937; --muted:#5b6676; --accent:#1b998b; --line:#dfe5ee; --bad:#b42318; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  [hidden] { display:none !important; }
+  #start { max-width:600px; margin:7vh auto; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px; display:flex; flex-direction:column; gap:12px; }
+  .band { background:var(--ink); color:#fff; border-radius:10px; padding:16px 18px; }
+  .band small { letter-spacing:.12em; text-transform:uppercase; font-size:11px; opacity:.8; }
+  .band h1 { margin:4px 0 0; font-size:22px; }
+  p { margin:0; line-height:1.5; }
+  .muted { color:var(--muted); font-size:14px; }
+  label { font-weight:600; font-size:14px; }
+  input[type=password] { font:inherit; padding:11px 12px; border:1px solid var(--line); border-radius:9px; width:100%; box-sizing:border-box; }
+  button { font:inherit; border-radius:10px; padding:12px 18px; cursor:pointer; }
+  button:focus-visible, input:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .primary { background:var(--accent); border:1px solid var(--accent); color:#fff; font-size:17px; font-weight:600; }
+  .secondary { background:#fff; color:var(--ink); border:1px solid var(--ink); }
+  .where { font-size:14px; background:#eef6f5; border-radius:9px; padding:10px 12px; }
+  #err { color:var(--bad); font-size:14px; }
+  .view { display:flex; flex-direction:column; gap:12px; }
+  .tabs { display:flex; gap:6px; }
+  .tab { flex:1; background:#fff; border:1px solid var(--line); color:var(--muted); padding:9px; }
+  .tab.on { border-color:var(--ink); color:var(--ink); font-weight:600; }
+  input[type=email] { font:inherit; padding:11px 12px; border:1px solid var(--line); border-radius:9px; width:100%; box-sizing:border-box; }
+  a { color:var(--ink); }
+  #bar { position:fixed; z-index:99999; right:12px; bottom:10px; background:var(--card); border:1px solid var(--line);
+         border-radius:999px; padding:6px 14px; font-size:12px; color:var(--muted); }
+  #bar b { color:var(--accent); }
+  #bar a { color:var(--accent); }
+  #bar .muted { font-size:12px; }
+  #safe { position:fixed; z-index:99999; left:50%; transform:translateX(-50%); bottom:54px; width:min(640px, calc(100vw - 32px)); box-sizing:border-box;
+          background:#fff8e6; border:2px solid #e0a100; border-radius:14px; padding:14px 16px; box-shadow:0 6px 24px rgba(0,0,0,.18); font-size:15px; color:#3d2f00; }
+  #safe p { margin:0 0 10px; line-height:1.45; }
+  #safe .row { display:flex; gap:8px; flex-wrap:wrap; }
+  #safe button { padding:9px 14px; font-size:15px; }
+  #loading { max-width:600px; margin:20vh auto; text-align:center; font-size:18px; color:var(--muted, #666); }
+  /* TAMA: no "Press Enter to submit form" hint over typed text */
+  [data-testid="InputInstructions"] { display:none !important; }
+  /* the empty scroll-to-top helper should not add a gap under "Fit tables to page" */
+  [data-testid="stLayoutWrapper"]:has(> .st-key-scroll_top_box) { position:absolute !important; height:0 !important; overflow:hidden !important; margin:0 !important; }
+  /* the chart tools (Show chart, Download ...) stay above the data view, so the way back to the chart can be seen */
+  [data-testid="stElementToolbar"] { z-index: 30 !important; }
+  /* in the "Show data" view the table box cut off its own tool row; let the tools show above the table so "Show chart" can be clicked */
+  [data-testid="stDataFrame"]:has([data-testid="stElementToolbar"] button[aria-label^="Show chart"]) { overflow: visible !important; }
+</style>
+</head>
+<body>
+<div id="start">
+  <div class="card">
+    <div class="band"><small>Teaching · Assessment · Measuring achievement</small><h1>TAMA online: TEST VERSION</h1></div>
+    <p>TAMA runs inside your web browser. Your courses and marks stay on this computer and are not sent to any server.</p>
+    <!-- sign in / create account -->
+    <div id="v-signin" class="view" hidden>
+      <div class="tabs"><button type="button" id="t-in" class="tab on">Sign in</button><button type="button" id="t-new" class="tab">Create account</button></div>
+      <label for="em">Email</label>
+      <input type="email" id="em" autocomplete="username" placeholder="name@kau.edu.sa">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" autocomplete="current-password">
+      <p class="muted" id="newnote" hidden>Free for KAU staff with an @kau.edu.sa email. We send a link to your email to confirm it is yours.</p>
+      <button class="primary" id="b-auth" type="button">Sign in</button>
+      <p class="muted"><a href="#" id="forgot">Forgot password?</a> · <a href="#" id="usetest">Use a test password</a></p>
+    </div>
+    <!-- waiting for the email link -->
+    <div id="v-verify" class="view" hidden>
+      <p>We sent a link to <b id="vmail"></b>. Open that email, click the link, then come back and press the button below. (Check the junk folder too.)</p>
+      <button class="primary" id="b-checked" type="button">I clicked the link</button>
+      <p class="muted"><a href="#" id="resend">Send the email again</a> · <a href="#" class="out">Sign out</a></p>
+    </div>
+    <!-- signed in but not allowed -->
+    <div id="v-nosub" class="view" hidden>
+      <p>You are signed in as <b id="nmail"></b>.</p>
+      <p>TAMA is free for KAU staff with an @kau.edu.sa email. For other users, subscriptions will open soon.</p>
+      <p class="muted"><a href="#" id="recheck">Check again</a> · <a href="#" class="out">Sign out</a></p>
+    </div>
+    <!-- test password (for trying TAMA before sign-in is ready) -->
+    <div id="v-test" class="view" hidden>
+      <label for="tpw">Test password</label>
+      <input type="password" id="tpw">
+      <p class="muted"><a href="#" id="backsign">Back to sign in</a></p>
+    </div>
+    <div id="err" hidden></div>
+    <div id="v-ready" class="view" hidden>
+      <p class="muted" id="who"></p>
+    <div class="where" id="folderbox">Your data is kept: <b id="where">inside this browser on this computer</b>
+      <div style="margin-top:8px"><button class="secondary" id="pick" type="button">Keep my data in a folder on my computer…</button></div>
+    </div>
+    <div class="where" id="nofolder" hidden>This browser keeps your data inside the browser on this computer. (Chrome or Edge can also keep it in a folder you choose.) For a spare copy, use “Download all my data” on TAMA's Settings page.</div>
+      <details class="where"><summary>Bring in my courses from TAMA on my computer</summary>
+        <p class="muted" style="margin-top:8px">Choose the file <b>app_data.json</b> (on Windows it is in the folder <b>%LOCALAPPDATA%\TAMA</b>; you can paste that into the address bar of the file window). It replaces what this browser has.</p>
+        <input type="file" id="importf" accept=".json,application/json" style="margin-top:8px">
+        <p class="muted" id="importok" hidden></p>
+      </details>
+      <button class="primary" id="go" type="button">Open TAMA</button>
+    </div>
+    <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
+  </div>
+</div>
+<div id="loading" hidden>Opening TAMA… (the first time takes about a minute)</div>
+<div id="safe" hidden role="dialog" aria-live="polite"><p id="safemsg"></p><div class="row"><button class="primary" id="safego" type="button"></button><button class="secondary" id="safelater" type="button">Later</button></div></div>
+<div id="bar" hidden><span id="barmsg"></span> <span class="muted"><span id="barwho"></span> · <a href="#" id="barstart">Start page</a> · <a href="#" id="barout">Sign out</a></span></div>
+<div id="root"></div>
+
+<script type="module">
+const LOCAL = new URLSearchParams(location.search).get("local");          // only for testing on a computer without internet
+const STLITE = LOCAL ? "./stlite/stlite.js" : "https://cdn.jsdelivr.net/npm/@stlite/browser@1.11.0/build/stlite.js";
+if (LOCAL) document.getElementById("stcss").href = "./stlite/stlite.css";
+const DATA_DIR = "/home/pyodide/tama_test_data";
+const DATA_PATH = DATA_DIR + "/app_data.json";
+const hasFolderApi = "showDirectoryPicker" in window;
+const $ = id => document.getElementById(id);
+
+// ---- small settings store in this browser (the chosen folder link and the password)
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open("tama-web-settings-test", 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function kvGet(k) { try { const db = await idb(); return await new Promise(r => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(undefined); }); } catch { return undefined; } }
+async function kvSet(k, v) { try { const db = await idb(); db.transaction("kv", "readwrite").objectStore("kv").put(v, k); } catch {} }
+
+let folder = null;
+function showFolder() { $("where").textContent = folder ? "in the folder “" + folder.name + "” on this computer" : "inside this browser on this computer";
+  $("pick").textContent = folder ? "Choose a different folder…" : "Keep my data in a folder on my computer…"; }
+if (!hasFolderApi) { $("folderbox").hidden = true; $("nofolder").hidden = false; }
+else { folder = (await kvGet("folder")) || null; showFolder(); }
+
+// ---- sign-in (Firebase): free for verified @kau.edu.sa emails, or for subscribers added by the owner
+import { initializeApp, getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         sendEmailVerification, sendPasswordResetEmail, signOut, reload, getFirestore, doc, getDoc } from "./firebase-bundle.js";
+const fbApp = initializeApp({ apiKey: "AIzaSyDNdIsV1T3aH1slwelMF05RApnRI_pwecA", authDomain: "tama-848ff.firebaseapp.com",
+  projectId: "tama-848ff", storageBucket: "tama-848ff.firebasestorage.app", messagingSenderId: "1091477469921", appId: "1:1091477469921:web:077855e2626d84e21515a0" });
+const auth = getAuth(fbApp), db = getFirestore(fbApp);
+let appKey = null, testMode = false, creating = false, autoTried = false;
+const WANT_START = new URLSearchParams(location.search).has("start");   // ?start=1 shows the start page (folder, bring in courses)
+const VIEWS = ["v-signin", "v-verify", "v-nosub", "v-test", "v-ready"];
+function show(...ids) { VIEWS.forEach(v => $(v).hidden = !ids.includes(v)); }
+function err(t) { $("err").textContent = t || ""; $("err").hidden = !t; }
+const isKau = e => /@kau\.edu\.sa$/i.test((e || "").trim());
+const MSG = { "auth/invalid-credential": "The email or password is not right.", "auth/wrong-password": "The email or password is not right.",
+  "auth/user-not-found": "There is no account with this email yet. Choose “Create account”.", "auth/email-already-in-use": "This email already has an account. Choose “Sign in”.",
+  "auth/weak-password": "Please use a password with at least 6 characters.", "auth/invalid-email": "Please check the email address.",
+  "auth/too-many-requests": "Too many tries. Please wait a few minutes and try again.", "auth/network-request-failed": "No internet connection. Please check it and try again." };
+const say = e => MSG[e && e.code] || ("Something went wrong (" + ((e && (e.code || e.message)) || "unknown") + ").");
+
+async function afterSignIn(user) {
+  err("");
+  if (testMode) return;
+  if (!user) { show("v-signin"); return; }
+  if (!user.emailVerified) { $("vmail").textContent = user.email; show("v-verify"); return; }
+  try {
+    await user.getIdToken(true);   // refresh, so the database sees that the email is now confirmed
+    const d = await getDoc(doc(db, "keys", "app"));
+    appKey = d.exists() ? d.data().k : null;
+  } catch (e) { appKey = null; }
+  if (appKey) { $("who").textContent = "Signed in as " + user.email + " · "; const a = document.createElement("a"); a.href = "#"; a.className = "out"; a.textContent = "Sign out"; $("who").appendChild(a); a.onclick = doOut; show("v-ready");
+    if (!autoTried && !WANT_START) { autoTried = true; $("start").hidden = true; $("loading").hidden = false; $("go").click(); } }
+  else { $("nmail").textContent = user.email; show("v-nosub"); }
+}
+async function doOut(e) { e && e.preventDefault(); testMode = false; await signOut(auth); if (window.__tama) location.href = location.pathname; }
+document.querySelectorAll(".out").forEach(a => a.onclick = doOut);
+onAuthStateChanged(auth, afterSignIn);
+
+function setTab(isNew) { creating = isNew; $("t-in").classList.toggle("on", !isNew); $("t-new").classList.toggle("on", isNew);
+  $("newnote").hidden = !isNew; $("b-auth").textContent = isNew ? "Create account" : "Sign in"; $("pw").autocomplete = isNew ? "new-password" : "current-password"; err(""); }
+$("t-in").onclick = () => setTab(false); $("t-new").onclick = () => setTab(true);
+$("b-auth").onclick = async () => {
+  const em = $("em").value.trim(), pw = $("pw").value; err("");
+  if (!em || !pw) { err("Please type your email and a password."); return; }
+  $("b-auth").disabled = true;
+  try {
+    if (creating) { const c = await createUserWithEmailAndPassword(auth, em, pw); await sendEmailVerification(c.user); afterSignIn(c.user); }
+    else await signInWithEmailAndPassword(auth, em, pw);
+  } catch (e) { err(say(e)); }
+  $("b-auth").disabled = false;
+};
+$("pw").addEventListener("keydown", e => { if (e.key === "Enter") $("b-auth").click(); });
+$("b-checked").onclick = async () => { if (!auth.currentUser) return; await reload(auth.currentUser);
+  if (!auth.currentUser.emailVerified) err("The email is not confirmed yet. Click the link in the email first."); else afterSignIn(auth.currentUser); };
+$("resend").onclick = async e => { e.preventDefault(); try { await sendEmailVerification(auth.currentUser); err(""); $("resend").textContent = "Sent again"; } catch (x) { err(say(x)); } };
+$("forgot").onclick = async e => { e.preventDefault(); const em = $("em").value.trim();
+  if (!em) { err("Type your email first, then click “Forgot password?”."); return; }
+  try { await sendPasswordResetEmail(auth, em); err(""); $("forgot").textContent = "Password email sent"; } catch (x) { err(say(x)); } };
+$("usetest").onclick = e => { e.preventDefault(); testMode = true; err(""); $("who").textContent = ""; show("v-test", "v-ready"); };
+$("recheck").onclick = e => { e.preventDefault(); afterSignIn(auth.currentUser); };
+$("backsign").onclick = e => { e.preventDefault(); testMode = false; afterSignIn(auth.currentUser); };
+
+$("pick").onclick = async () => {
+  try { folder = await window.showDirectoryPicker({ id: "tama-data", mode: "readwrite" }); await kvSet("folder", folder); showFolder(); } catch (e) {}
+};
+
+// ---- open the locked app file with the password
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function unlock(pw) {
+  const lk = await (await fetch("./app.locked.json?v=" + Date.now(), { cache: "no-store" })).json();
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: b64(lk.salt), iterations: lk.iter }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const zipped = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(lk.iv) }, key, b64(lk.data));   // fails when the password is wrong
+  const plain = new Blob([zipped]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(plain).text();
+}
+
+async function readFolderData() {
+  if (!folder) return null;
+  try {
+    if ((await folder.queryPermission({ mode: "readwrite" })) !== "granted") {
+      if (!navigator.userActivation || !navigator.userActivation.isActive) { folderWait = true; return null; }   // ask later, with a click on the bar
+      if ((await folder.requestPermission({ mode: "readwrite" })) !== "granted") { folder = null; return null; } }
+    const fh = await folder.getFileHandle("app_data_TEST.json", { create: false });
+    const f = await fh.getFile();
+    return { text: await f.text(), time: f.lastModified };
+  } catch (e) { return null; }   // no file there yet
+}
+// the copy TAMA keeps inside this browser (the browser's file store of the data folder), read before TAMA starts
+async function readBrowserCopy() {
+  try {
+    const dbx = await new Promise((res, rej) => { const r = indexedDB.open(DATA_DIR);
+      r.onupgradeneeded = () => { try { r.transaction.abort(); } catch (e) {} };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    if (!dbx.objectStoreNames.contains("FILE_DATA")) { dbx.close(); return null; }
+    const v = await new Promise(res => { const q = dbx.transaction("FILE_DATA").objectStore("FILE_DATA").get(DATA_PATH);
+      q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+    dbx.close();
+    if (!v || !v.contents) return null;
+    return { text: new TextDecoder().decode(v.contents), time: +new Date(v.timestamp) };
+  } catch (e) { return null; }
+}
+const hasCourses = t => /"courses"\s*:\s*\[\s*\{/.test(t || "");
+// one copy per day in "TAMA backups" inside the chosen folder (the last 14 days); an empty copy never replaces one with courses
+async function writeBackup(text) {
+  try {
+    if (!hasCourses(text)) return;
+    const bd = await folder.getDirectoryHandle("TAMA backups", { create: true });
+    const d = new Date(), day = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const fh = await bd.getFileHandle("app_data_TEST_" + day + ".json", { create: true });
+    const w = await fh.createWritable(); await w.write(text); await w.close();
+    const names = []; for await (const [n] of bd.entries()) if (/^app_data_TEST_\d{4}-\d\d-\d\d\.json$/.test(n)) names.push(n);
+    names.sort(); for (const n of names.slice(0, -14)) { try { await bd.removeEntry(n); } catch (e) {} }
+  } catch (e) {}
+}
+async function writeFolder(name, text) {
+  const fh = await folder.getFileHandle(name, { create: true });
+  const w = await fh.createWritable(); await w.write(text); await w.close();
+}
+
+let imported = null, folderWait = false;
+$("importf").onchange = async () => { const f = $("importf").files[0]; if (!f) return;
+  try { const t = (await f.text()).replace(/^\uFEFF/, "");   // TAMA files may contain NaN, so they are checked by shape, not parsed here
+    if (!/^\s*\{/.test(t) || !t.includes('"tables"')) throw 0;
+    imported = t; $("importok").textContent = "Ready: the courses in " + f.name + " will be loaded when you open TAMA."; $("importok").hidden = false; err(""); }
+  catch (e) { imported = null; err("That file is not a TAMA data file (app_data.json)."); } };
+$("tpw").addEventListener("keydown", e => { if (e.key === "Enter") $("go").click(); });
+$("go").onclick = async () => {
+  $("err").hidden = true; $("go").disabled = true; $("go").textContent = "Opening TAMA…";
+  let code;
+  try { code = await unlock(testMode ? $("tpw").value.trim() : appKey); }
+  catch (e) { err(testMode ? "That password did not work. Check it and try again." : "TAMA could not be opened. Please reload the page and try again.");
+    $("go").disabled = false; $("go").textContent = "Open TAMA"; $("start").hidden = false; $("loading").hidden = true; return; }
+  // which copy TAMA opens: a file brought in on the start page, else the NEWER of the folder copy and the browser copy
+  // (an older folder copy never replaces newer work kept in the browser), and a copy with courses wins over an empty one
+  const fCopy = imported ? null : await readFolderData();
+  const bCopy = imported ? null : await readBrowserCopy();
+  let fromFolder = imported || null;
+  if (!fromFolder && fCopy) {
+    let useF = !bCopy || (fCopy.text !== bCopy.text && fCopy.time > bCopy.time);
+    if (bCopy && useF && !hasCourses(fCopy.text) && hasCourses(bCopy.text)) useF = false;
+    if (bCopy && !useF && !hasCourses(bCopy.text) && hasCourses(fCopy.text)) useF = true;
+    if (useF) fromFolder = fCopy.text;
+  }
+  if (!fromFolder && !bCopy) fromFolder = window.__tamaPreload || null;
+  window.__tamaPick = { folder: fCopy ? fCopy.time : null, browser: bCopy ? bCopy.time : null, used: fromFolder ? "folder" : "browser" };
+  const files = { "app.py": { data: code } };
+  if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
+  const { mount } = await import(STLITE);
+  $("start").hidden = true;
+  const app = mount({
+    entrypoint: "app.py",
+    files,
+    requirements: ["openpyxl", "python-docx", "pillow", "pypdf", "reportlab", "arabic-reshaper", "python-bidi==0.4.2"],
+    idbfsMountpoints: [DATA_DIR],
+    streamlitConfig: { "client.toolbarMode": "viewer", "theme.base": "light" },
+    ...(LOCAL ? { pyodideUrl: new URL("./pyodide-local/pyodide.mjs", location.href).href } : {}),
+  }, $("root"));
+  window.__tama = app;
+  // hidden helper boxes of TAMA (scripts with no height) should not leave empty gaps on the page
+  const tidy = () => document.querySelectorAll('#root [data-testid="stElementContainer"]').forEach(el => {
+    if (el.dataset.tamaTidy || !el.querySelector('iframe') || el.innerText.trim() || el.querySelector('canvas, img, input, button, table')) return;
+    if (el.getBoundingClientRect().height > 1) return;
+    el.dataset.tamaTidy = "1"; el.style.cssText += ';position:absolute;width:0;height:0;overflow:hidden;';
+  });
+  new MutationObserver(() => { clearTimeout(window.__tamaTidyT); window.__tamaTidyT = setTimeout(tidy, 200); }).observe($("root"), { childList: true, subtree: true });
+  // small repair for the browser edition of Streamlit (some tables need it); TAMA itself is unchanged
+  (async () => { for (let i = 0; i < 300; i++) { try { await app.runPython(
+    "import streamlit.elements.widgets.data_editor as _de\nclass _NoSchema:\n    schema = ()\n_de.arrow_table = _NoSchema()\n"); return; }
+    catch (e) { await new Promise(r => setTimeout(r, 500)); } } })();
+
+  // ---- copy the data to the chosen folder whenever TAMA saves (checked every 3 seconds)
+  const bar = $("bar");
+  if (!testMode && auth.currentUser) { bar.hidden = false; $("barwho").textContent = auth.currentUser.email; }
+  $("barstart").onclick = e => { e.preventDefault(); location.href = location.pathname + "?start=1"; };
+  $("barout").onclick = doOut;
+  let last = fromFolder || (bCopy && bCopy.text) || null;
+  const syncNow = async () => {
+    if (!folder || folderWait) return;
+    try {
+      const t = await app.readFile(DATA_PATH, { encoding: "utf8" });
+      if (t && t !== last) { await writeFolder("app_data_TEST.json", t); last = t; await writeBackup(t);
+        bar.hidden = false; $("barmsg").innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); $("barmsg").querySelector("b").textContent = folder.name; }
+    } catch (e) {}
+  };
+  setInterval(syncNow, 3000);
+  // ---- keep the data safe: ask once per opening for a folder (a OneDrive folder is also backed up), or for permission to use it again
+  const safe = $("safe");
+  const askBox = (msg, btn, onGo) => { $("safemsg").innerHTML = msg; $("safego").textContent = btn; $("safego").onclick = onGo; safe.hidden = false; };
+  $("safelater").onclick = () => { safe.hidden = true; };
+  if (folder) { bar.hidden = false; $("barmsg").textContent = "Data folder: " + folder.name; }
+  if (hasFolderApi && !folder) {
+    askBox("<b>Keep your courses safe.</b> Right now they are kept only inside this browser, and clearing the browser would lose them. "
+      + "Choose a folder on your computer once (a <b>OneDrive</b> folder is best: it is also backed up and appears on your other computers). TAMA then saves there by itself.",
+      "Choose a folder", async () => {
+        try { folder = await window.showDirectoryPicker({ id: "tama-data", mode: "readwrite" }); } catch (e) { return; }
+        await kvSet("folder", folder); folderWait = false; safe.hidden = true;
+        const f = await readFolderData();   // the folder already has TAMA data (for example from another computer)
+        if (f) {
+          let cur = null; try { cur = await app.readFile(DATA_PATH, { encoding: "utf8" }); } catch (e) {}
+          if (f.text !== cur) {
+            if (hasCourses(f.text) && (!hasCourses(cur) || f.time > (bCopy ? bCopy.time : 0))) { location.reload(); return; }   // open the folder's newer data
+            try { const bd = await folder.getDirectoryHandle("TAMA backups", { create: true });   // keep the older folder copy before it is replaced
+              const fh = await bd.getFileHandle("app_data_TEST_replaced_" + Date.now() + ".json", { create: true });
+              const w = await fh.createWritable(); await w.write(f.text); await w.close(); } catch (e) {}
+          }
+        }
+        last = null; await syncNow();
+        bar.hidden = false; if (!$("barmsg").textContent) $("barmsg").textContent = "Data folder: " + folder.name; });
+  } else if (folder && folderWait) {
+    askBox("<b>Keep saving to your folder “<span id='safefn'></span>”.</b> The browser needs your OK once each time TAMA opens.", "Allow", async () => {
+      try { if ((await folder.requestPermission({ mode: "readwrite" })) !== "granted") return; } catch (e) { return; }
+      folderWait = false; safe.hidden = true;
+      const f = await readFolderData();   // newer work in the folder (for example from another computer): open it
+      if (f && bCopy && f.text !== bCopy.text && f.time > bCopy.time && (hasCourses(f.text) || !hasCourses(bCopy.text))) { location.reload(); return; }
+      await syncNow(); });
+    $("safefn").textContent = folder.name;
+  } else if (!hasFolderApi && !(await kvGet("noFolderSeen"))) {
+    askBox("<b>Your courses are kept only inside this browser.</b> To keep a safe copy in a folder on your computer (for example OneDrive), open TAMA in <b>Chrome</b> or <b>Edge</b>.",
+      "OK", async () => { safe.hidden = true; await kvSet("noFolderSeen", 1); });
+    $("safelater").hidden = true;
+  }
+};
+</script>
+<div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#fff3c4;color:#5a4500;text-align:center;font:600 13px system-ui;padding:4px">TEST VERSION: changes being checked before they reach the real TAMA. Data here is kept apart from your real courses.</div>
+</body>
+</html>
