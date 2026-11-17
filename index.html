@@ -37,6 +37,11 @@
   #bar b { color:var(--accent); }
   #bar a { color:var(--accent); }
   #bar .muted { font-size:12px; }
+  #safe { position:fixed; z-index:99999; left:50%; transform:translateX(-50%); bottom:54px; width:min(640px, calc(100vw - 32px)); box-sizing:border-box;
+          background:#fff8e6; border:2px solid #e0a100; border-radius:14px; padding:14px 16px; box-shadow:0 6px 24px rgba(0,0,0,.18); font-size:15px; color:#3d2f00; }
+  #safe p { margin:0 0 10px; line-height:1.45; }
+  #safe .row { display:flex; gap:8px; flex-wrap:wrap; }
+  #safe button { padding:9px 14px; font-size:15px; }
   #loading { max-width:600px; margin:20vh auto; text-align:center; font-size:18px; color:var(--muted, #666); }
   /* TAMA: no "Press Enter to submit form" hint over typed text */
   [data-testid="InputInstructions"] { display:none !important; }
@@ -100,6 +105,7 @@
   </div>
 </div>
 <div id="loading" hidden>Opening TAMA… (the first time takes about a minute)</div>
+<div id="safe" hidden role="dialog" aria-live="polite"><p id="safemsg"></p><div class="row"><button class="primary" id="safego" type="button"></button><button class="secondary" id="safelater" type="button">Later</button></div></div>
 <div id="bar" hidden><span id="barmsg"></span> <span class="muted"><span id="barwho"></span> · <a href="#" id="barstart">Start page</a> · <a href="#" id="barout">Sign out</a></span></div>
 <div id="root"></div>
 
@@ -206,8 +212,36 @@ async function readFolderData() {
       if (!navigator.userActivation || !navigator.userActivation.isActive) { folderWait = true; return null; }   // ask later, with a click on the bar
       if ((await folder.requestPermission({ mode: "readwrite" })) !== "granted") { folder = null; return null; } }
     const fh = await folder.getFileHandle("app_data.json", { create: false });
-    return await (await fh.getFile()).text();
+    const f = await fh.getFile();
+    return { text: await f.text(), time: f.lastModified };
   } catch (e) { return null; }   // no file there yet
+}
+// the copy TAMA keeps inside this browser (the browser's file store of the data folder), read before TAMA starts
+async function readBrowserCopy() {
+  try {
+    const dbx = await new Promise((res, rej) => { const r = indexedDB.open(DATA_DIR);
+      r.onupgradeneeded = () => { try { r.transaction.abort(); } catch (e) {} };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    if (!dbx.objectStoreNames.contains("FILE_DATA")) { dbx.close(); return null; }
+    const v = await new Promise(res => { const q = dbx.transaction("FILE_DATA").objectStore("FILE_DATA").get(DATA_PATH);
+      q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+    dbx.close();
+    if (!v || !v.contents) return null;
+    return { text: new TextDecoder().decode(v.contents), time: +new Date(v.timestamp) };
+  } catch (e) { return null; }
+}
+const hasCourses = t => /"courses"\s*:\s*\[\s*\{/.test(t || "");
+// one copy per day in "TAMA backups" inside the chosen folder (the last 14 days); an empty copy never replaces one with courses
+async function writeBackup(text) {
+  try {
+    if (!hasCourses(text)) return;
+    const bd = await folder.getDirectoryHandle("TAMA backups", { create: true });
+    const d = new Date(), day = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const fh = await bd.getFileHandle("app_data_" + day + ".json", { create: true });
+    const w = await fh.createWritable(); await w.write(text); await w.close();
+    const names = []; for await (const [n] of bd.entries()) if (/^app_data_\d{4}-\d\d-\d\d\.json$/.test(n)) names.push(n);
+    names.sort(); for (const n of names.slice(0, -14)) { try { await bd.removeEntry(n); } catch (e) {} }
+  } catch (e) {}
 }
 async function writeFolder(name, text) {
   const fh = await folder.getFileHandle(name, { create: true });
@@ -227,7 +261,19 @@ $("go").onclick = async () => {
   try { code = await unlock(testMode ? $("tpw").value.trim() : appKey); }
   catch (e) { err(testMode ? "That password did not work. Check it and try again." : "TAMA could not be opened. Please reload the page and try again.");
     $("go").disabled = false; $("go").textContent = "Open TAMA"; $("start").hidden = false; $("loading").hidden = true; return; }
-  const fromFolder = imported || (await readFolderData()) || window.__tamaPreload || null;
+  // which copy TAMA opens: a file brought in on the start page, else the NEWER of the folder copy and the browser copy
+  // (an older folder copy never replaces newer work kept in the browser), and a copy with courses wins over an empty one
+  const fCopy = imported ? null : await readFolderData();
+  const bCopy = imported ? null : await readBrowserCopy();
+  let fromFolder = imported || null;
+  if (!fromFolder && fCopy) {
+    let useF = !bCopy || (fCopy.text !== bCopy.text && fCopy.time > bCopy.time);
+    if (bCopy && useF && !hasCourses(fCopy.text) && hasCourses(bCopy.text)) useF = false;
+    if (bCopy && !useF && !hasCourses(bCopy.text) && hasCourses(fCopy.text)) useF = true;
+    if (useF) fromFolder = fCopy.text;
+  }
+  if (!fromFolder && !bCopy) fromFolder = window.__tamaPreload || null;
+  window.__tamaPick = { folder: fCopy ? fCopy.time : null, browser: bCopy ? bCopy.time : null, used: fromFolder ? "folder" : "browser" };
   const files = { "app.py": { data: code } };
   if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
   const { mount } = await import(STLITE);
@@ -258,19 +304,51 @@ $("go").onclick = async () => {
   if (!testMode && auth.currentUser) { bar.hidden = false; $("barwho").textContent = auth.currentUser.email; }
   $("barstart").onclick = e => { e.preventDefault(); location.href = location.pathname + "?start=1"; };
   $("barout").onclick = doOut;
-  if (folder) {
-    bar.hidden = false; $("barmsg").textContent = "Data folder: " + folder.name;
-    if (folderWait) { $("barmsg").innerHTML = '<a href="#" id="reconn">Click here to keep saving to your folder “<b></b>”</a>'; $("barmsg").querySelector("b").textContent = folder.name;
-      $("reconn").onclick = async e => { e.preventDefault(); try { if ((await folder.requestPermission({ mode: "readwrite" })) === "granted") { folderWait = false; $("barmsg").textContent = "Data folder: " + folder.name; } } catch (x) {} }; }
-    let last = fromFolder;
-    setInterval(async () => {
-      if (folderWait) return;
-      try {
-        const t = await app.readFile(DATA_PATH, { encoding: "utf8" });
-        if (t && t !== last) { await writeFolder("app_data.json", t); last = t;
-          $("barmsg").innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); $("barmsg").querySelector("b").textContent = folder.name; }
-      } catch (e) {}
-    }, 3000);
+  let last = fromFolder || (bCopy && bCopy.text) || null;
+  const syncNow = async () => {
+    if (!folder || folderWait) return;
+    try {
+      const t = await app.readFile(DATA_PATH, { encoding: "utf8" });
+      if (t && t !== last) { await writeFolder("app_data.json", t); last = t; await writeBackup(t);
+        bar.hidden = false; $("barmsg").innerHTML = "Saved to folder <b></b> at " + new Date().toLocaleTimeString(); $("barmsg").querySelector("b").textContent = folder.name; }
+    } catch (e) {}
+  };
+  setInterval(syncNow, 3000);
+  // ---- keep the data safe: ask once per opening for a folder (a OneDrive folder is also backed up), or for permission to use it again
+  const safe = $("safe");
+  const askBox = (msg, btn, onGo) => { $("safemsg").innerHTML = msg; $("safego").textContent = btn; $("safego").onclick = onGo; safe.hidden = false; };
+  $("safelater").onclick = () => { safe.hidden = true; };
+  if (folder) { bar.hidden = false; $("barmsg").textContent = "Data folder: " + folder.name; }
+  if (hasFolderApi && !folder) {
+    askBox("<b>Keep your courses safe.</b> Right now they are kept only inside this browser, and clearing the browser would lose them. "
+      + "Choose a folder on your computer once (a <b>OneDrive</b> folder is best: it is also backed up and appears on your other computers). TAMA then saves there by itself.",
+      "Choose a folder", async () => {
+        try { folder = await window.showDirectoryPicker({ id: "tama-data", mode: "readwrite" }); } catch (e) { return; }
+        await kvSet("folder", folder); folderWait = false; safe.hidden = true;
+        const f = await readFolderData();   // the folder already has TAMA data (for example from another computer)
+        if (f) {
+          let cur = null; try { cur = await app.readFile(DATA_PATH, { encoding: "utf8" }); } catch (e) {}
+          if (f.text !== cur) {
+            if (hasCourses(f.text) && (!hasCourses(cur) || f.time > (bCopy ? bCopy.time : 0))) { location.reload(); return; }   // open the folder's newer data
+            try { const bd = await folder.getDirectoryHandle("TAMA backups", { create: true });   // keep the older folder copy before it is replaced
+              const fh = await bd.getFileHandle("app_data_replaced_" + Date.now() + ".json", { create: true });
+              const w = await fh.createWritable(); await w.write(f.text); await w.close(); } catch (e) {}
+          }
+        }
+        last = null; await syncNow();
+        bar.hidden = false; if (!$("barmsg").textContent) $("barmsg").textContent = "Data folder: " + folder.name; });
+  } else if (folder && folderWait) {
+    askBox("<b>Keep saving to your folder “<span id='safefn'></span>”.</b> The browser needs your OK once each time TAMA opens.", "Allow", async () => {
+      try { if ((await folder.requestPermission({ mode: "readwrite" })) !== "granted") return; } catch (e) { return; }
+      folderWait = false; safe.hidden = true;
+      const f = await readFolderData();   // newer work in the folder (for example from another computer): open it
+      if (f && bCopy && f.text !== bCopy.text && f.time > bCopy.time && (hasCourses(f.text) || !hasCourses(bCopy.text))) { location.reload(); return; }
+      await syncNow(); });
+    $("safefn").textContent = folder.name;
+  } else if (!hasFolderApi && !(await kvGet("noFolderSeen"))) {
+    askBox("<b>Your courses are kept only inside this browser.</b> To keep a safe copy in a folder on your computer (for example OneDrive), open TAMA in <b>Chrome</b> or <b>Edge</b>.",
+      "OK", async () => { safe.hidden = true; await kvSet("noFolderSeen", 1); });
+    $("safelater").hidden = true;
   }
 };
 </script>
