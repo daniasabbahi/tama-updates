@@ -369,6 +369,7 @@
     const was = Object.values(tp).some((v) => v.not_covered) || d.topics_choice === "no" ? "no" : d.topics_none ? "yes" : null;
     const n = Object.values(tp).filter((v) => v.not_covered).length;
     el.innerHTML = `<div class="sec-head" id="h-topics"><div><h2>Topics not covered</h2><p class="sub">For section C of the Course Report.</p></div></div>
+      <div class="info-box"><span>🕒 Fill this section after you have finished teaching the course, when you know which topics were not covered.</span></div>
       <div class="fld"><span class="lbl">Were all the topics covered by the end of the course?</span>
         <div class="seg">${[["yes", "Yes, all topics were covered"], ["no", "No, some topics were not covered"]].map(([v, l]) => `<button class="${was === v ? "on" : ""}" data-tq="${v}">${l}</button>`).join("")}</div></div>
       ${was === "yes" ? `<p class="ok-text">All topics were covered: section C of the Course Report will say None.</p>`
