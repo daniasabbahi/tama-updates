@@ -327,11 +327,11 @@
     // a small assessment plan, so the Assessment plan page has something to show
     S.data.extra_methods = S.data.extra_methods || {}; S.data.extra_methods[k] = ["Presentations"];
     S.data.tables.clo_plan = (S.data.tables.clo_plan || []).filter((r) => r.course_code !== k);
-    [["CLO1", "MCQ, Short Essay"], ["CLO2", "Short Essay, Long Essay"], ["CLO3", "MCQ"], ["CLO4", "Presentations"]].forEach(([c, m]) => S.data.tables.clo_plan.push({ course_code: k, clo_id: c, assessment_methods: m }));
+    [["CLO1", "Midterm exam, Final exam"], ["CLO2", "Final exam"], ["CLO3", "Midterm exam, Final exam"], ["CLO4", "Presentations"]].forEach(([c, m]) => S.data.tables.clo_plan.push({ course_code: k, clo_id: c, assessment_methods: m }));
     S.data.course_report = S.data.course_report || {};
     S.data.course_report[k] = Object.assign(S.data.course_report[k] || {}, { grading_cfg: { total: "100", mode: "Marks" },
-      grading: [{ Assessment: "Midterm exam", Type: "Test-based", Mark: "30", Weight: "30%", "Due date": "Week 7" }, { Assessment: "Presentations", Type: "Performance-based", Mark: "20", Weight: "20%", "Due date": "Week 10" },
-        { Assessment: "Final exam", Type: "Test-based", Mark: "50", Weight: "50%", "Due date": "Week 15" }],
+      grading: [{ Assessment: "Midterm exam", Method: "Test-based assessment", Type: "Test-based", Mark: "30", Weight: "30%", "Due date": "Week 7" }, { Assessment: "Presentations", Method: "Presentations", Type: "Performance-based", Mark: "20", Weight: "20%", "Due date": "Week 10" },
+        { Assessment: "Final exam", Method: "Test-based assessment", Type: "Test-based", Mark: "50", Weight: "50%", "Due date": "Week 15" }],
       formative: [{ Assessment: "One-minute paper", Description: "Students write the main point and the muddiest point of the lecture.", Timing: "Every lecture" }] });
     S.save(); T.toast("Sample course DPHE 858 added."); openCourse(k);
   }
