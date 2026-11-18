@@ -455,10 +455,8 @@
     if (!nOut) { el.innerHTML = `<div class="sec-head" id="h-plsum"><div><h2>Summaries</h2><p class="sub">They appear once the course has ${basis}.</p></div></div>`; return; }
     const cov = (list) => rows.filter((r) => list.some((m) => ticked(r, m))).length;
     const ticks = (list) => rows.reduce((s, r) => s + list.filter((m) => ticked(r, m)).length, 0);
-    const kindRows = KINDS.map((k) => { const l = ms.filter((m) => kindOf(sel, m) === k); const c = cov(l);
-      return { "Type of assessment": k, Methods: l.join(", ") || "-", "Number of methods": l.length, [`${basis} assessed`]: c, [`% of ${basis}`]: `${nOut ? Math.round(c / nOut * 100) : 0}%`, "Total ticks": ticks(l) }; });
-    const all = cov(ms);
-    kindRows.push({ "Type of assessment": "All types", Methods: "", "Number of methods": ms.length, [`${basis} assessed`]: all, [`% of ${basis}`]: `${Math.round(all / nOut * 100)}%`, "Total ticks": ticks(ms) });
+    // Dania 2026-11-19: the per-type summary table was removed; the totals by type sit at the end of the method table instead
+    const byKind = (k) => cov(ms.filter((m) => kindOf(sel, m) === k));
     const none = rows.filter((r) => !ms.some((m) => ticked(r, m))).map((r) => r.id);
 
     // questions linked to the outcomes (from the Exam blueprint's question mapping)
@@ -507,12 +505,11 @@
         <button class="btn sm" id="plan-csv">Download plan (CSV)</button></div>
       ${none.length ? `<p class="warn-text">Not yet assessed by any method: ${esc(none.join(", "))}</p>` : `<div class="ok-box">Every learning outcome in this plan is assessed by at least one method.</div>`}
       <h4>How many outcomes each method assesses</h4>
-      <div class="grid g2 sum-grid">
+      <div class="sum-one">
         <div><table class="tbl sum-tbl kind-tbl"><colgroup><col style="width:46%"><col><col style="width:22%"></colgroup><thead><tr><th>Type of assessment</th><th>Method</th><th>${basis} assessed</th></tr></thead>
-          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody></table>
+          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody>
+          <tfoot>${[["Performance-based assessment", "performance-based"], ["Test-based assessment", "test-based"]].map(([k, w]) => `<tr class="total-row"><td colspan="2" data-l="">${basis} assessed by ${w} assessment</td><td data-l="${basis} assessed" class="num">${byKind(k)} of ${nOut}</td></tr>`).join("")}</tfoot></table>
           <p class="note">The type of each method is filled in from its name: MCQ and essays are test-based; presentations, simulation, portfolio, OSPE, OSCE, Mini-CEX, DOPS, case-based and workplace assessments are performance-based; surveys and feedback are indirect; anything else is 'Others'. If a type is wrong, choose another one. It saves itself.</p></div>
-        <div>${smallTable(Object.keys(kindRows[0]), kindRows, "type-tbl")}
-          <p class="note">${basis} assessed = how many of the ${nOut} ${basis} are assessed by at least one method of that type.</p></div>
       </div>
       <h4>Questions linked to the ${basis}</h4>
       ${qHtml}${sloClo}${cloTypes}`;

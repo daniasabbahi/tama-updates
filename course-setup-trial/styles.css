@@ -356,3 +356,5 @@ body.panel-open .help-btn { display: none; }
   .donut-wrap { flex-direction: column; }
 }
 @media (max-width: 560px) { .grid.g4 { grid-template-columns: 1fr; } .crumbs > span:first-child, .crumbs > .sep:first-of-type { display: none; } }
+
+.sum-one { max-width: 760px; }
