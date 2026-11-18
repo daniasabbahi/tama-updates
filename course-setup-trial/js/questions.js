@@ -90,6 +90,7 @@
       <div class="fld"><span class="lbl">Add a picture to this question (optional) <i class="hint" title="The picture is shrunk and saved with the question. It is printed under the question text.">?</i></span>
         <div class="row-btns"><label class="btn sm"><input type="file" id="qd-img" accept="image/png,image/jpeg" hidden>Choose a picture</label>${d.image ? `<img src="${esc(d.image)}" class="qd-pic" alt=""><button class="btn sm" id="qd-img-x">Remove</button>` : ""}</div></div>
       <div class="row-btns"><button class="btn primary" id="qd-add">Add question</button></div>
+      ${T.bpImportHtml ? T.bpImportHtml(sel, exam) : ""}
       <h3 class="qm-h">Questions of this course</h3>
       ${all.length ? `<div class="kcards four qm-k">${[["Total planned marks", g2(total)], ["Questions", all.length], ["Unmapped questions", all.filter((q) => !split(q.clos).length).length], [`Questions in ${exam}`, here.length]].map(([l, v]) => `<div class="kcard"><div class="lab">${esc(l)}</div><div class="big">${v}</div></div>`).join("")}</div>
         <div class="bp-wrap"><table class="tbl sum-tbl qm-list"><thead><tr><th>Exam</th><th>ID</th><th>Type</th><th>Question</th><th class="num">Marks</th><th>Topic</th><th>Cognitive level</th><th>SLOs</th><th>CLOs</th><th>Picture</th></tr></thead>
@@ -128,6 +129,7 @@
     const img = $("#qd-img", el); if (img) img.onchange = async () => { const f = img.files[0]; if (!f) return; try { d.image = await prepImage(f); keep(); redraw(); } catch (e) { T.toast(e.message); } };
     const ix = $("#qd-img-x", el); if (ix) ix.onclick = () => { d.image = ""; keep(); redraw(); };
     $("#qd-add", el).onclick = () => addQuestion(sel, exam, d, info);
+    if (T.bpImportWire) T.bpImportWire(sel, exam, el);
     const mg = $("#qm-multi-go", el); if (mg) mg.onclick = () => {
       const multi = qOf(sel).filter((q) => split(q.slos).length > 1);
       $$("[data-ms]", el).forEach((s) => { const q = multi[+s.dataset.ms]; if (!q) return; q.slos = s.value; q.map_basis = "SLOs"; if (info.slo2clo[s.value]) q.clos = info.slo2clo[s.value]; });

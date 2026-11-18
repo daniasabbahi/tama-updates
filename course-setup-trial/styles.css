@@ -466,3 +466,4 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .chip input[type=checkbox] { all: revert; margin: 0; width: auto; height: auto; }
 .fld > .chips { border: 0; padding: 2px 0; }
 @media (min-width: 761px) { .fld > .seg { align-self: flex-start; } }
+.qx-tbl { min-width: 1800px; } .qx-tbl td { padding: 3px 4px; } .qx-tbl .cell { font-size: 12.5px; }

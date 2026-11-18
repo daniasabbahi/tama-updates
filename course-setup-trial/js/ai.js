@@ -43,13 +43,15 @@
     if (!r.ok) { const err = new Error(`the AI service answered ${r.status}: ${txt.slice(0, 300)}`); err.status = r.status; throw err; }
     try { return JSON.parse(txt); } catch (e) { throw new Error("the AI service sent an answer TAMA could not read. If your internet asks you to sign in (e.g. hotel or campus Wi-Fi), sign in first and try again."); }
   }
-  T.aiAsk = async function (prompt, system, maxTokens, quick) {
+  /** images (optional): [{ mime: "image/jpeg", b64: "..." }] - pictures sent with the question (e.g. photos of exam papers). */
+  T.aiAsk = async function (prompt, system, maxTokens, quick, images) {
+    images = images || [];
     const s = T.aiSettings(), p = s.provider, key = T.s(s.api_key).trim();
     const model = T.s(s.model).trim() || DEFAULT_MODEL[p] || "";
     system = system || T.AI_SYSTEM; maxTokens = maxTokens || 4000;
     if (p === "claude") {
       if (!key) throw new Error("no Claude API key is saved. Add it under Link my AI tool.");
-      const body = { model, max_tokens: quick ? maxTokens : Math.max(maxTokens, 16000), system, output_config: { effort: quick ? "low" : "medium" }, messages: [{ role: "user", content: prompt }] };
+      const body = { model, max_tokens: quick ? maxTokens : Math.max(maxTokens, 16000), system, output_config: { effort: quick ? "low" : "medium" }, messages: [{ role: "user", content: images.length ? [...images.map((im) => ({ type: "image", source: { type: "base64", media_type: im.mime, data: im.b64 } })), { type: "text", text: prompt }] : prompt }] };
       let out;
       try { out = await post("https://api.anthropic.com/v1/messages", body, { "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" }); }
       catch (e) {
@@ -64,12 +66,12 @@
     if (p === "openai" || p === "compatible") {
       let base = p === "openai" ? "https://api.openai.com/v1" : T.s(s.base_url).trim().replace(/\/+$/, "");
       if (!base.endsWith("/chat/completions")) base += "/chat/completions";
-      const out = await post(base, { model, messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }, key ? { Authorization: `Bearer ${key}` } : {});
+      const out = await post(base, { model, messages: [{ role: "system", content: system }, { role: "user", content: images.length ? [...images.map((im) => ({ type: "image_url", image_url: { url: `data:${im.mime};base64,${im.b64}` } })), { type: "text", text: prompt }] : prompt }] }, key ? { Authorization: `Bearer ${key}` } : {});
       try { return out.choices[0].message.content.trim(); } catch (e) { throw new Error(`unexpected answer from the AI service: ${JSON.stringify(out).slice(0, 200)}`); }
     }
     if (p === "gemini") {
       const out = await post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: prompt }] }] }, { "x-goog-api-key": key });
+        { systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [...images.map((im) => ({ inline_data: { mime_type: im.mime, data: im.b64 } })), { text: prompt }] }] }, { "x-goog-api-key": key });
       try { return out.candidates[0].content.parts.map((x) => x.text || "").join("").trim(); } catch (e) { throw new Error(`unexpected answer from Gemini: ${JSON.stringify(out).slice(0, 200)}`); }
     }
     throw new Error("no AI tool is linked. Open Link my AI tool in the Ask the assistant window.");
