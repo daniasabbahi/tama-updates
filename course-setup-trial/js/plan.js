@@ -464,7 +464,8 @@
   const cloTypesTable = (ms, rr) => `<div class="ct-wrap ${ms.length > 10 ? "scroll" : ""}"><table class="tbl sum-tbl clo-types"${ms.length > 10 ? ` style="min-width:${362 + ms.length * 44}px"` : ""}>
     <colgroup><col style="width:56px"><col style="width:66px"><col>${ms.map(() => `<col style="width:44px">`).join("")}</colgroup>
     <thead><tr><th>CLO</th><th>Domain</th><th>CLO statement</th>${ms.map((m) => `<th class="mth" title="${esc(m)}"><span>${esc(m).replace(/\//g, "/<wbr>")}</span></th>`).join("")}</tr></thead>
-    <tbody>${rr.map((r) => `<tr><td data-l="CLO">${esc(r.CLO)}</td><td data-l="Domain">${esc(r.Domain)}</td><td class="wrap" data-l="CLO statement">${esc(r["CLO statement"])}</td>${ms.map((m) => `<td class="c" data-l="${esc(m)}">${esc(r[m] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    <tbody>${rr.map((r) => `<tr><td data-l="CLO">${esc(r.CLO)}</td><td data-l="Domain">${esc(r.Domain)}</td><td class="wrap" data-l="CLO statement">${esc(r["CLO statement"])}</td>${ms.map((m) => { const v = T.s(r[m] || ""), f = v.match(/^(\d+)\/(\d+)$/), lv = f ? (+f[1] >= +f[2] ? 3 : +f[1] / +f[2] >= 0.5 ? 2 : 1) : v ? 3 : 0;
+      return `<td class="c" data-l="${esc(m)}">${v ? `<span class="pill l${lv}" title="${f ? `${f[1]} of ${f[2]} SLOs of this CLO` : "Assessed"}">${esc(v)}</span>` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>`;
 
   T.sections.planSum = function () {
     const sel = T.current(), el = $("#sec-plsum"); if (!el) return;
@@ -519,10 +520,10 @@
       const cellOf = (cid, m) => {
         if (basis === "CLOs") return cloTick[cid] && ticked(cloTick[cid], m) ? "✓" : "";
         const my = slos.filter((s) => String(s.clo_id) === cid).map((s) => String(s.slo_id)), n = my.filter((i) => (sloTypes[i] || []).includes(m)).length;
-        return n ? `${n} of ${my.length}` : "";
+        return n ? `${n}/${my.length}` : "";
       };
       const rr = clos.map((c) => ({ CLO: c.clo_id, Domain: c.domain, "CLO statement": c.clo_text, ...Object.fromEntries(ms.map((m) => [m, cellOf(String(c.clo_id), m)])) }));
-      cloTypes = `<details class="sum-box"><summary>Summary of CLOs and assessment types</summary><p class="note">${basis === "CLOs" ? "✓ = the CLO is assessed by this type in the plan above." : "Each cell shows how many of the CLO's SLOs are assessed by that type (e.g. 2 of 3)."} An empty row means the CLO is not assessed yet.</p>${cloTypesTable(ms, rr)}</details>`;
+      cloTypes = `<details class="sum-box"><summary>Summary of CLOs and assessment types</summary><p class="note">${basis === "CLOs" ? "✓ = the CLO is assessed by this type in the plan above." : "Each cell shows how many of the CLO's SLOs are assessed by that type (e.g. 2/3 = 2 of its 3 SLOs; a darker box means more of them are covered)."} An empty row means the CLO is not assessed yet.</p>${cloTypesTable(ms, rr)}</details>`;
     }
 
     el.innerHTML = `<div class="sec-head" id="h-plsum"><div><h2>Summaries of the plan</h2><p class="sub">They follow the ticks above at once.</p></div>
