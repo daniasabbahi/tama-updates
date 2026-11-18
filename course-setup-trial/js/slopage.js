@@ -226,6 +226,7 @@
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
     const fc = $("#sfile-clear", box); if (fc) fc.onclick = () => { delete store[sel]; S.saveUi(); renderImport(box, sel); };
     if (!s) return;
+    if (s.week === undefined) s.week = guess(s.tables[s.pick].columns, WEEK_WORDS);   // a file chosen before the Date / Week column existed
 
     const tbl = s.tables[s.pick], cols = tbl.columns, el = $("#simp-body", box);
     const colSel = (id, label, val, req) => T.select({ id, label, req, value: val, options: [["", "(none)"], ...cols.map((c) => [c, c])] });
@@ -237,7 +238,7 @@
       <div class="grid g4">${colSel("s-week", "Date / Week (optional)", s.week)}${colSel("s-id", "SLO ID (optional)", s.id)}${colSel("s-clo", "Linked CLO (optional)", s.clo)}${colSel("s-kpi", "Target KPI (optional)", s.kpi)}</div>
       <div class="grid g2">
         ${T.select({ id: "s-dclo", label: "Link to this CLO when the file has no valid CLO", value: s.dclo, options: [["", "(empty - leave the CLO link empty)"], ...clos.map((c) => [String(c.clo_id), cloLabel(c)])] })}
-        ${T.field({ id: "s-dkpi", label: "Target KPI (%) for imported SLOs (also used where the file column is empty)", value: s.dkpi })}
+        ${T.field({ id: "s-dkpi", label: "Target KPI (%) for imported SLOs", value: s.dkpi, help: "Also used for any SLO whose Target KPI cell in the file is empty." })}
       </div>
       <div class="fld"><span class="lbl">What to do with the SLOs already saved for this course</span>
         <div class="seg">${[["add", "Add the imported SLOs to them"], ["replace", "Replace them with the imported SLOs"]].map(([v, l]) => `<button class="${s.mode === v ? "on" : ""}" data-smode="${v}">${l}</button>`).join("")}</div></div>
@@ -264,9 +265,13 @@
       [a, `CLO${k + 1}`, `CLO ${k + 1}`].forEach((x) => { if (!(x in cloSet)) cloSet[x] = String(c.clo_id); });
     });
     const good = [], problems = [], unmatched = [];
+    let lastWeek = "";   // a week written once for several rows (or merged cells) carries down to the rows below it
     tbl.rows.filter((r) => Object.values(r).some((v) => T.s(v).trim())).forEach((r, i) => {
       const txt = T.s(r[s.text]).trim(), top = T.s(r[s.topic]).trim(), dmRaw = T.s(r[s.dom]).trim(), rowNo = i + 2;
       const dm = DOM_MAP[dmRaw.toUpperCase().replace(/ /g, "")];
+      let wk = s.week ? T.s(r[s.week]).trim() : "";
+      if (/^\d+(\.0)?$/.test(wk)) wk = "Week " + parseInt(wk, 10);
+      if (wk) lastWeek = wk; else wk = lastWeek;
       if (!txt || !top || !dmRaw) { problems.push(`Row ${rowNo}: statement, lecture / topic and domain are all required.`); return; }
       if (!dm) { problems.push(`Row ${rowNo}: domain '${dmRaw}' is not one of ${T.SLO_DOMAINS.join(", ")}.`); return; }
       let sid = s.id ? T.s(r[s.id]).trim() : "";
@@ -281,7 +286,7 @@
       }
       let kpi = T.num(s.dkpi, 70);
       if (s.kpi) { const kv = parseFloat(r[s.kpi]); if (!isNaN(kv)) kpi = Math.min(Math.max(kv, 0), 100); }
-      good.push({ course_code: sel, week: s.week ? T.s(r[s.week]).trim() : "", topic: T.cap1(top, "Lecture"), slo_id: sid, slo_text: T.cap1(txt, "SLO statement"), domain: dm, clo_id: clo, assessment_methods: "", target_kpi: kpi });
+      good.push({ course_code: sel, week: wk, topic: T.cap1(top, "Lecture"), slo_id: sid, slo_text: T.cap1(txt, "SLO statement"), domain: dm, clo_id: clo, assessment_methods: "", target_kpi: kpi });
     });
     chk.innerHTML = `${problems.length ? `<div class="warn-box"><b>These rows cannot be imported and will be skipped:</b><ul>${problems.slice(0, 20).map((p) => `<li>${esc(p)}</li>`).join("")}${problems.length > 20 ? "<li>...</li>" : ""}</ul></div>` : ""}
       ${unmatched.length ? `<p class="warn-text">These CLOs in the file are not CLOs of this course, so their SLOs ${s.dclo ? "get the CLO chosen above" : "are left without a CLO"}: ${esc(unmatched.join(", "))}. This course's CLOs are ${esc(cloIds.join(", "))}. Add or import the CLOs first, or fix the file.</p>` : ""}
@@ -306,10 +311,11 @@
       T.refresh("slotbl", "sloadd", "topics");
     };
   }
+  const WEEK_WORDS = ["date / week", "date/week", "week", "date", "session"];
   function setMap(s) {
     const cols = s.tables[s.pick].columns;
     // the first word is the best hint: "statement" must win over "slo", which also matches "SLO ID"
-    s.week = guess(cols, ["date / week", "date/week", "week", "date", "session"]);
+    s.week = guess(cols, WEEK_WORDS);
     s.text = guess(cols, ["statement", "outcome", "text", "description", "slo"], ["id", "code", "no.", "clo", "kpi", "domain", "lecture", "topic", "week", "date"]);
     s.topic = guess(cols, ["lecture", "topic", "module"]);
     s.dom = guess(cols, ["domain"]);
