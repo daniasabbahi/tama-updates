@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>TAMA TEST VERSION</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#14365d">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.11.0/build/stlite.css" id="stcss">
 <style>
   /* start card, then the app fills the page */
@@ -100,13 +104,14 @@
         <p class="muted" id="importok" hidden></p>
       </details>
       <button class="primary" id="go" type="button">Open TAMA</button>
+      <p class="muted" id="instbox" hidden>Tip: <a href="#" id="inst">Install TAMA on this computer</a> to open it from its own icon, in its own window.</p>
     </div>
     <p class="muted">The first time takes about a minute while TAMA loads into the browser. Works in Chrome, Edge, Safari and Firefox on Windows and Mac.</p>
   </div>
 </div>
 <div id="loading" hidden>Opening TAMA… (the first time takes about a minute)</div>
 <div id="safe" hidden role="dialog" aria-live="polite"><p id="safemsg"></p><div class="row"><button class="primary" id="safego" type="button"></button><button class="secondary" id="safelater" type="button">Later</button></div></div>
-<div id="bar" hidden><span id="barmsg"></span> <span class="muted"><span id="barwho"></span> · <a href="#" id="barstart">Start page</a> · <a href="#" id="barout">Sign out</a></span></div>
+<div id="bar" hidden><span id="barmsg"></span> <span class="muted"><span id="barwho"></span> · <a href="#" id="barinst" hidden>Install TAMA</a><span id="barinstdot" hidden> · </span><a href="#" id="barstart">Start page</a> · <a href="#" id="barout">Sign out</a></span></div>
 <div id="root"></div>
 
 <script type="module">
@@ -117,6 +122,19 @@ const DATA_DIR = "/home/pyodide/tama_test_data";
 const DATA_PATH = DATA_DIR + "/app_data.json";
 const hasFolderApi = "showDirectoryPicker" in window;
 const $ = id => document.getElementById(id);
+
+// ---- installable app (_INSTALL_APP_V1): Chrome and Edge offer "Install TAMA" (own icon and window).
+// The helper sw.js keeps no copies of TAMA, so updates, sign-in, the password lock and the data folder work as before.
+if ("serviceWorker" in navigator && !LOCAL) navigator.serviceWorker.register("./sw.js").catch(() => {});
+let installEv = null;
+function showInstall(on) { for (const id of ["barinst", "barinstdot", "instbox"]) $(id).hidden = !on; }
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEv = e; showInstall(true); });
+window.addEventListener("appinstalled", () => { installEv = null; showInstall(false); });
+async function doInstall(e) { e.preventDefault();
+  if (!installEv) { alert("To install TAMA, click the install icon at the right end of the address bar,\nor open the browser menu (⋮ or …) and choose Install TAMA."); return; }
+  const ev = installEv; installEv = null; ev.prompt();   // the browser allows one prompt per offer
+  try { if ((await ev.userChoice).outcome === "accepted") showInstall(false); } catch {} }   // on "Cancel" the link stays and then explains the address-bar icon
+$("barinst").onclick = doInstall; $("inst").onclick = doInstall;
 
 // ---- small settings store in this browser (the chosen folder link and the password)
 function idb() { return new Promise((res, rej) => { const r = indexedDB.open("tama-web-settings-test", 1);
