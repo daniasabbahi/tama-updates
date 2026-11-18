@@ -77,7 +77,7 @@
       <tbody>${rows.map((r, i) => {
         const linked = cloIds.includes(T.s(r.clo_id));
         return `<tr data-i="${i}">
-        <td data-l="Date / Week"><textarea rows="1" class="cell ${T.s(r.week).trim() ? "filled" : ""}" data-ref="slo:${i}:week" data-c="week" placeholder="e.g. Week 1" spellcheck="false">${esc(r.week)}</textarea></td>
+        <td data-l="Date / Week"><textarea rows="1" class="cell ${T.s(r.week).trim() ? "filled" : ""}" data-ref="slo:${i}:week" data-c="week" spellcheck="false">${esc(r.week)}</textarea></td>
         <td data-l="Order"><input class="cell num-in filled" type="number" min="1" step="1" value="${i + 1}" data-ref="slo:${i}:order" data-c="order" title="Type a number to put this SLO in that place."></td>
         <td data-l="Lecture / module"><textarea rows="1" class="cell ${T.s(r.topic).trim() ? "filled" : ""}" list="${tid}" data-ref="slo:${i}:topic" data-c="topic" spellcheck="true">${esc(r.topic)}</textarea></td>
         <td data-l="SLO ID"><span class="locked-id" title="Numbered automatically">${esc(r.slo_id)}</span></td>
@@ -265,13 +265,11 @@
       [a, `CLO${k + 1}`, `CLO ${k + 1}`].forEach((x) => { if (!(x in cloSet)) cloSet[x] = String(c.clo_id); });
     });
     const good = [], problems = [], unmatched = [];
-    let lastWeek = "";   // a week written once for several rows (or merged cells) carries down to the rows below it
     tbl.rows.filter((r) => Object.values(r).some((v) => T.s(v).trim())).forEach((r, i) => {
       const txt = T.s(r[s.text]).trim(), top = T.s(r[s.topic]).trim(), dmRaw = T.s(r[s.dom]).trim(), rowNo = i + 2;
       const dm = DOM_MAP[dmRaw.toUpperCase().replace(/ /g, "")];
-      let wk = s.week ? T.s(r[s.week]).trim() : "";
-      if (/^\d+(\.0)?$/.test(wk)) wk = "Week " + parseInt(wk, 10);
-      if (wk) lastWeek = wk; else wk = lastWeek;
+      let wk = s.week ? T.s(r[s.week]).trim() : "";   // kept exactly as in the file; an empty cell stays empty
+      if (/^\d+\.0$/.test(wk)) wk = wk.slice(0, -2);
       if (!txt || !top || !dmRaw) { problems.push(`Row ${rowNo}: statement, lecture / topic and domain are all required.`); return; }
       if (!dm) { problems.push(`Row ${rowNo}: domain '${dmRaw}' is not one of ${T.SLO_DOMAINS.join(", ")}.`); return; }
       let sid = s.id ? T.s(r[s.id]).trim() : "";

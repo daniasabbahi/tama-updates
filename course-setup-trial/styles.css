@@ -155,6 +155,7 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .tbl .num-in { text-align: right; padding: 7px 6px; }
 .tbl .cell { min-height: 34px; padding: 6px 7px; font-size: 13px; border-width: 1px; border-color: transparent; background: transparent; }
 .tbl .cell.filled { background: var(--filled); }
+.tbl .cell:not(.filled):not(select) { background: #fff; border-color: var(--line); }   /* empty cells: white box, still clearly typeable */
 .tbl .cell:hover { border-color: var(--field); }
 .tbl .cell:focus { border-color: var(--mauve); background: #fff; }
 .tbl textarea.cell { resize: none; overflow: hidden; line-height: 1.45; display: block; }
