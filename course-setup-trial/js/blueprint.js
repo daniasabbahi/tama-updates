@@ -114,7 +114,7 @@
         <label class="fld filled" for="bp-dur"><span class="lbl">Exam duration (minutes)</span><input type="text" inputmode="decimal" id="bp-dur" data-ref="bp-dur" value="${esc(g2(dur))}"></label>
         <label class="fld ${rev ? "filled" : ""}" for="bp-rev"><span class="lbl">Revision / extra time (minutes, if any)</span><input type="text" inputmode="decimal" id="bp-rev" data-ref="bp-rev" value="${esc(g2(rev))}"></label>
         <div class="kcard a bp-actual"><div class="lab">Actual exam time</div><div class="big">${g2(actual)} <small>minutes</small></div></div>
-      </div>${!row ? `<p class="note">The exam is saved as soon as it has a duration above 0.</p>` : ""}` : ""}`;
+      </div>${!row ? `<p class="note">The exam is saved as soon as it has a duration above 0.</p>` : ""}${T.bpRenameHtml(sel, exam)}` : ""}`;
     $("#bp-exam", el).onchange = (e) => { setExam(sel, e.target.value); T.refresh("bpExam", "bpTab"); };
     const nw = $("#bp-new", el);
     if (nw) { nw.focus(); nw.onkeydown = (e) => { if (e.key !== "Enter") return; const v = T.s(nw.value).trim(); if (!v) return; setExam(sel, v); saveExam(sel, v, 60, 0); T.toast(`'${v}' added.`); T.refresh("bpExam", "bpTab"); }; }
@@ -125,6 +125,7 @@
       T.refresh("bpExam", "bpTab");
     };
     ["#bp-dur", "#bp-rev"].forEach((id) => { const i = $(id, el); if (i) i.onchange = save; });
+    if (exam && exam !== NEW) T.bpRenameWire(sel, exam, el, (v) => setExam(sel, v));
   };
   function saveExam(sel, exam, dur, rev) {
     const t = tbl("exams"); let r = t.find((x) => String(x.course_code) === String(sel) && T.s(x.assessment) === exam);
@@ -148,11 +149,12 @@
     if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>The exam</b> above first.</span></div>`;
     else if (tab === "build") body = builder(sel, exam);
     else if (tab === "map") body = T.bpMapTab(sel, exam);
-    else body = `<div class="info-box"><span>This part is being rebuilt next. Until then, use it in TAMA.</span></div>`;
+    else body = T.bpDownloadsTab(sel, exam);
     el.innerHTML = `<div class="tabs" id="h-bptab">${TABS.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-bptab="${k}">${l}</button>`).join("")}</div>${body}`;
     $$("[data-bptab]", el).forEach((b) => b.onclick = () => { S.ui.bpTab = b.dataset.bptab; S.saveUi(); T.refresh("bpTab"); });
     if (tab === "build" && exam && exam !== NEW) wireBuilder(sel, exam, el);
     if (tab === "map" && exam && exam !== NEW) T.bpMapWire(sel, exam, el);
+    if (tab === "dl" && exam && exam !== NEW) T.bpDownloadsWire(sel, exam, el);
   };
 
   /* ---------------------------------------------------------------- the blueprint builder (TAMA's calculation, unchanged) */
