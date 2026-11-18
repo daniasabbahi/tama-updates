@@ -189,8 +189,12 @@
   /* ---------------------------------------------------------------- the blueprint builder (TAMA's calculation, unchanged) */
   function minutesState(sel, exam, basis, domains) {
     const all = obj("bp_minutes3"), k = key(sel, exam, basis);
-    if (!all[k]) { const base = obj("bp_minutes2")[basis] || DEFAULT_MINUTES[basis]; all[k] = JSON.parse(JSON.stringify(base)); }
+    // a new exam starts from the defaults (MCQ K and S:Cog. fixed, every other box empty - Dania 2026-11-19), not from TAMA's saved bp_minutes2
+    if (!all[k]) all[k] = JSON.parse(JSON.stringify(DEFAULT_MINUTES[basis]));
     const m = all[k];
+    // once per exam: clear the old automatic MCQ value of 4 minutes (the old default), so those boxes are empty as Dania asked
+    S.ui.bpMinReset = S.ui.bpMinReset || {};
+    if (!S.ui.bpMinReset[k]) { Object.keys(m.MCQ || {}).forEach((d) => { if (!(d in (FIXED_MCQ[basis] || {})) && num(m.MCQ[d]) === 4) m.MCQ[d] = null; }); S.ui.bpMinReset[k] = 1; S.saveUi(); S.save(); }
     TYPES.forEach((t) => { m[t] = m[t] || {}; domains.forEach((d) => { if (!(d in m[t])) m[t][d] = t === "MCQ" && DEFAULT_MINUTES[basis].MCQ[d] !== undefined ? DEFAULT_MINUTES[basis].MCQ[d] : null; }); });
     Object.entries(FIXED_MCQ[basis] || {}).forEach(([d, v]) => { m.MCQ[d] = v; });   // fixed (Dania 2026-11-19)
     return m;
