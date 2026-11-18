@@ -11,9 +11,11 @@
   const TYPE_KEY = { MCQ: "mcq", "Short Essay": "short", "Long Essay": "long" };
   const TEST = "Test-based assessment";
   const DEFAULT_MINUTES = {
-    SLOs: { MCQ: { K: 1, "S:Cog.": 2, "S:IT-N": 4, "S:Psych": 4, V: 4 }, "Short Essay": { K: null, "S:Cog.": null, "S:IT-N": null, "S:Psych": null, V: null }, "Long Essay": { K: null, "S:Cog.": null, "S:IT-N": null, "S:Psych": null, V: null } },
-    CLOs: { MCQ: { K: 1, S: 2, V: 4 }, "Short Essay": { K: null, S: null, V: null }, "Long Essay": { K: null, S: null, V: null } },
+    SLOs: { MCQ: { K: 1, "S:Cog.": 2, "S:IT-N": null, "S:Psych": null, V: null }, "Short Essay": { K: null, "S:Cog.": null, "S:IT-N": null, "S:Psych": null, V: null }, "Long Essay": { K: null, "S:Cog.": null, "S:IT-N": null, "S:Psych": null, V: null } },
+    CLOs: { MCQ: { K: 1, S: null, V: null }, "Short Essay": { K: null, S: null, V: null }, "Long Essay": { K: null, S: null, V: null } },
   };
+  /** MCQ minutes that are fixed and cannot be changed (Dania 2026-11-19): K = 1 minute, S:Cog. = 2 minutes. */
+  const FIXED_MCQ = { SLOs: { K: 1, "S:Cog.": 2 }, CLOs: { K: 1 } };
   const PLAN_COLS = ["course_code", "assessment", "basis", "lecture", "outcome_id", "statement", "domain", "mcq_weight", "short_weight", "long_weight",
     "mcq_minutes", "short_minutes", "long_minutes", "mcq_questions", "short_questions", "long_questions"];
 
@@ -102,9 +104,11 @@
       const ms = minutesState(sel, exam, basis, domains), doms = domains.length ? domains : Object.keys(ms.MCQ || {});
       const need = TYPES.map((t) => [t, new Set(P().planRows(sel, basis).filter((r) => typesOf(sel, exam, basis)(r.id).has(t)).map((r) => T.s(r.domain).trim()))]);
       mins = `<h4 class="bp-mh">Minutes needed to answer one question, by domain</h4>
-        <p class="note">MCQ values follow your Excel sheet. Enter the minutes for Short essay and Long essay questions of each domain (the boxes start empty). An outcome is left out of the calculation until its domain has a value. Your entries save themselves at once.</p>
+        <p class="note">MCQ for K (1 minute) and S:Cog. (2 minutes) are fixed. Enter the minutes for the other boxes of each domain that this exam uses (they start empty). An outcome is left out of the calculation until its domain has a value. Your entries save themselves at once.</p>
         <div class="grid g3 bp-mins">${TYPES.map((t, ti) => `<div><h4 class="bp-th" style="color:${PAL[t][1]}">${t === "MCQ" ? "MCQ" : t.replace(" Essay", " essay")}</h4><table class="tbl bp-min"><colgroup><col><col style="width:46%"></colgroup><thead><tr><th>Domain</th><th>Minutes per question</th></tr></thead><tbody>
-          ${Object.keys(ms[t]).filter((d) => doms.includes(d) || ms[t][d] !== null).map((d) => { const v = num(ms[t][d]), miss = v === null && need[ti][1].has(d); return `<tr><td class="ro">${esc(d)}</td><td><input type="text" inputmode="decimal" class="cell ${v !== null ? "filled" : ""} ${miss ? "need" : ""}" data-mt="${t}" data-md="${esc(d)}" data-ref="m:${t}:${esc(d)}" value="${v === null ? "" : esc(g2(v))}" ${miss ? `title="Needed: an outcome of this domain has ${t} ticked"` : ""}></td></tr>`; }).join("")}</tbody></table></div>`).join("")}</div>`;
+          ${Object.keys(ms[t]).filter((d) => doms.includes(d) || ms[t][d] !== null).map((d) => { const v = num(ms[t][d]), miss = v === null && need[ti][1].has(d); const fx = t === "MCQ" && FIXED_MCQ[basis] && d in FIXED_MCQ[basis];
+            if (fx) return `<tr><td class="ro">${esc(d)}</td><td class="ro fixed-min" title="Fixed: always ${FIXED_MCQ[basis][d]} minute(s) for an MCQ of this domain">${g2(FIXED_MCQ[basis][d])} <span class="muted">(fixed)</span></td></tr>`;
+            return `<tr><td class="ro">${esc(d)}</td><td><input type="text" inputmode="decimal" class="cell ${v !== null ? "filled" : ""} ${miss ? "need" : ""}" data-mt="${t}" data-md="${esc(d)}" data-ref="m:${t}:${esc(d)}" value="${v === null ? "" : esc(g2(v))}" ${miss ? `title="Needed: an outcome of this domain has ${t} ticked"` : ""}></td></tr>`; }).join("")}</tbody></table></div>`).join("")}</div>`;
     }
     el.innerHTML = `<div class="sec-head" id="h-bpexam"><div><h2>The exam</h2><p class="sub">Choose the test you want to build the blueprint for. Each test-based assessment is a separate exam with its own duration, minutes per question, question types, weights and questions. Everything saves itself.</p></div></div>
       <div class="grid g3 bp-exam">
@@ -174,6 +178,7 @@
     if (!all[k]) { const base = obj("bp_minutes2")[basis] || DEFAULT_MINUTES[basis]; all[k] = JSON.parse(JSON.stringify(base)); }
     const m = all[k];
     TYPES.forEach((t) => { m[t] = m[t] || {}; domains.forEach((d) => { if (!(d in m[t])) m[t][d] = t === "MCQ" && DEFAULT_MINUTES[basis].MCQ[d] !== undefined ? DEFAULT_MINUTES[basis].MCQ[d] : null; }); });
+    Object.entries(FIXED_MCQ[basis] || {}).forEach(([d, v]) => { m.MCQ[d] = v; });   // fixed (Dania 2026-11-19)
     return m;
   }
   const minOf = (ms, t, d) => { const v = num(ms[t] ? ms[t][d] : null); return v !== null && v > 0 ? v : null; };

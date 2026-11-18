@@ -479,3 +479,4 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .bx-key i.off { background: #eceff3; border: 1px solid #d8dde4; }
 .bp-mh { margin-top: 18px; }
 .bp-min .cell.need { border-color: #d9a441; background: #fff7e6; }
+.bp-min td.fixed-min { font-weight: 600; color: var(--navy); padding-left: 14px; }
