@@ -170,21 +170,20 @@
   };
 
   /* ================================================================ 3. tabs: how many questions / question mapping / downloads */
-  const TABS = [["build", "1. How many questions? (blueprint builder)"], ["map", "2. Exam builder"], ["dl", "3. Download this exam"]];
+  const TABS = [["build", "1. How many questions?"], ["map", "2. Exam builder"]];   // downloads are now under Exam builder > Reports
   T.sections.bpTab = function () {
     const sel = T.current(), el = $("#sec-bptab"); if (!el) return;
+    if (S.ui.bpTab === "dl") { S.ui.bpTab = "map"; S.ui.ebTab = "reports"; }
     const tab = TABS.some(([k]) => k === S.ui.bpTab) ? S.ui.bpTab : "build";
     const exam = examOf(sel);
     let body;
     if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>Test blueprint</b> above first.</span></div>`;
     else if (tab === "build") body = builder(sel, exam);
     else if (tab === "map") body = T.bpMapTab(sel, exam);
-    else body = T.bpDownloadsTab(sel, exam);
     el.innerHTML = `<div class="tabs" id="h-bptab">${TABS.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-bptab="${k}">${l}</button>`).join("")}</div>${body}`;
     $$("[data-bptab]", el).forEach((b) => b.onclick = () => { S.ui.bpTab = b.dataset.bptab; S.saveUi(); T.refresh("bpTab"); });
     if (tab === "build" && exam && exam !== NEW) wireBuilder(sel, exam, el);
     if (tab === "map" && exam && exam !== NEW) T.bpMapWire(sel, exam, el);
-    if (tab === "dl" && exam && exam !== NEW) T.bpDownloadsWire(sel, exam, el);
   };
 
   /* ---------------------------------------------------------------- the blueprint builder (TAMA's calculation, unchanged) */

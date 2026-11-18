@@ -79,7 +79,7 @@
     "assessment-plan": { name: "Assessment plan", sub: "The grading breakdown of the course and which assessment methods measure each CLO or SLO. Everything saves itself as you type.",
       jump: [["h-summ", "Summative"], ["h-form", "Formative"], ["h-plan", "Plan"], ["h-plsum", "Summaries"]] },
     "exam-blueprint": { name: "Blueprint for written exams", sub: "Choose a test, its timing and the weight of each question type, then how many MCQ, short essay and long essay questions each exam needs. Everything saves itself as you type.",
-      jump: [["h-bpexam", "Test blueprint"], ["h-bpplan", "Types and weights"], ["h-bptab", "How many questions?"]] },
+      jump: [["h-bpexam", "Test blueprint"], ["h-bpplan", "Types and weights"], ["h-bptab", "How many questions? / Exam builder"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {

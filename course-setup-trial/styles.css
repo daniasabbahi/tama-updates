@@ -486,3 +486,7 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .bp-tbl .lock { color: #9aa0a6; }
 .bp-tbl td.wtot { background: #d5dde8; color: var(--navy); vertical-align: middle; } .bp-tbl td.wtot.bad { background: #fde7c2; color: var(--warn); } .bp-tbl td.wtot.off { background: #eceff3; }
 .bp-tbl tr.over td.bx.inplan { background: #f6dcc0; }
+/* Exam builder: smaller tabs */
+.tabs.sub-tabs { margin: 10px 0 6px; border-bottom: 1px solid var(--line); }
+.tabs.sub-tabs button { font-size: 13.5px; padding: 7px 12px; }
+.tabs.sub-tabs .cnt { display: inline-block; min-width: 18px; padding: 0 6px; border-radius: 9px; background: var(--mauve-tint); color: var(--navy); font-size: 11.5px; margin-left: 4px; }

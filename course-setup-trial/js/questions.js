@@ -42,6 +42,8 @@
   }
 
   /* ---------------------------------------------------------------- the tab */
+  /** The smaller tabs of the Exam builder (Dania 2026-11-19). */
+  const EB_TABS = [["add", "Add questions"], ["bank", "Question bank"], ["print", "Print the exam"], ["reports", "Reports"]];
   T.bpMapTab = function (sel, exam) {
     const info = sloInfo(sel), d = draft(sel, exam), qid = nextId(sel, exam);
     const topics = []; [...info.slos.map((r) => r.topic), ...qOf(sel).map((q) => q.topic)].forEach((t) => { t = T.s(t).trim(); if (t && t.toLowerCase() !== "nan" && !topics.includes(t)) topics.push(t); });
@@ -67,11 +69,13 @@
     const multi = all.filter((q) => split(q.slos).length > 1);
     const total = all.reduce((a, q) => a + (num(q.max_marks) || 0), 0);
     const hasPic = (q) => T.s(q.image).startsWith("data:image");
-    return `${multi.length ? `<div class="warn-box qm-multi"><div><b>⚠ ${multi.length} question(s) are linked to more than one SLO.</b> A question should measure ONE SLO only, so its marks count correctly for that SLO and its CLO. Pick one SLO for each question and press Save (the first SLO is already selected).
+    const multiHtml = `${multi.length ? `<div class="warn-box qm-multi"><div><b>⚠ ${multi.length} question(s) are linked to more than one SLO.</b> A question should measure ONE SLO only, so its marks count correctly for that SLO and its CLO. Pick one SLO for each question and press Save (the first SLO is already selected).
         <table class="tbl sum-tbl"><thead><tr><th>Exam</th><th>Question</th><th>Linked now to</th><th>Keep only this SLO</th></tr></thead><tbody>
         ${multi.map((q, i) => `<tr><td>${esc(q.assessment)}</td><td>${esc(q.question_id)}</td><td>${esc(split(q.slos).join(", "))}</td><td><select class="cell filled" data-ms="${i}">${[...new Set([...split(q.slos), ...info.slos.map((s) => String(s.slo_id))])].map((s) => `<option ${s === split(q.slos)[0] ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table>
-        <div class="row-btns"><button class="btn primary sm" id="qm-multi-go">💾 Save one SLO for these questions</button></div></div></div>` : ""}
-      <h3 class="qm-h">Add a question</h3>
+        <div class="row-btns"><button class="btn primary sm" id="qm-multi-go">💾 Save one SLO for these questions</button></div></div></div>` : ""}`;
+    const sub = EB_TABS.some(([k]) => k === S.ui.ebTab) ? S.ui.ebTab : "add";
+    const bar = `<div class="tabs sub-tabs">${EB_TABS.map(([k, l]) => `<button class="${k === sub ? "on" : ""}" data-ebtab="${k}">${l}${k === "bank" && all.length ? ` <span class="cnt">${all.length}</span>` : ""}</button>`).join("")}</div>`;
+    const addHtml = `<h3 class="qm-h">Add a question to ${esc(exam)}</h3>
       <div class="grid g3">
         <label class="fld locked"><span class="lbl">Question ID (automatic) <i class="hint" title="Numbered automatically by the number of questions in this exam.">?</i></span><input type="text" value="${esc(qid)}" disabled></label>
         ${T.field({ id: "qd-marks", label: "Maximum marks", value: d.marks })}
@@ -90,21 +94,26 @@
       <div class="fld"><span class="lbl">Add a picture to this question (optional) <i class="hint" title="The picture is shrunk and saved with the question. It is printed under the question text.">?</i></span>
         <div class="row-btns"><label class="btn sm"><input type="file" id="qd-img" accept="image/png,image/jpeg" hidden>Choose a picture</label>${d.image ? `<img src="${esc(d.image)}" class="qd-pic" alt=""><button class="btn sm" id="qd-img-x">Remove</button>` : ""}</div></div>
       <div class="row-btns"><button class="btn primary" id="qd-add">Add question</button></div>
-      ${T.bpImportHtml ? T.bpImportHtml(sel, exam) : ""}
-      <h3 class="qm-h">Questions of this course</h3>
+      ${T.bpImportHtml ? T.bpImportHtml(sel, exam) : ""}`;
+    const bankHtml = `<h3 class="qm-h">Question bank of this course</h3>
+      <p class="note">Every question you add or import is kept here, for all the exams of this course. The questions of ${esc(exam)} come first.</p>
       ${all.length ? `<div class="kcards four qm-k">${[["Total planned marks", g2(total)], ["Questions", all.length], ["Unmapped questions", all.filter((q) => !split(q.clos).length).length], [`Questions in ${exam}`, here.length]].map(([l, v]) => `<div class="kcard"><div class="lab">${esc(l)}</div><div class="big">${v}</div></div>`).join("")}</div>
         <div class="bp-wrap"><table class="tbl sum-tbl qm-list"><thead><tr><th>Exam</th><th>ID</th><th>Type</th><th>Question</th><th class="num">Marks</th><th>Topic</th><th>Cognitive level</th><th>SLOs</th><th>CLOs</th><th>Picture</th></tr></thead>
         <tbody>${all.slice().sort((a, b) => (T.s(a.assessment) === exam ? 0 : 1) - (T.s(b.assessment) === exam ? 0 : 1) || natKey(a.assessment).localeCompare(natKey(b.assessment)) || natKey(a.question_id).localeCompare(natKey(b.question_id))).map((q) => `<tr class="${T.s(q.assessment) === exam ? "" : "other"}"><td>${esc(q.assessment)}</td><td class="b">${esc(q.question_id)}</td><td>${esc(q.question_type)}</td><td class="wrap">${esc(T.s(q.question_text).slice(0, 160))}</td><td class="num">${esc(g2(num(q.max_marks)))}</td><td>${esc(q.topic)}</td><td>${esc(q.cognitive_level)}</td><td>${esc(q.slos)}</td><td>${esc(q.clos)}</td><td>${hasPic(q) ? "Yes" : ""}</td></tr>`).join("")}</tbody></table></div>
         <div class="row-btns"><button class="btn sm" id="qm-csv">Download blueprint CSV</button></div>
-        <h4>Print the exam paper <span class="muted">· questions are grouped by type, numbered and laid out for printing</span></h4>
-        ${[["Exam paper", false], ["Answer key", true]].map(([l, k]) => `<div class="qm-print"><b>${l}</b><button class="btn sm" data-pp="html" data-pk="${k ? 1 : 0}">⬇ HTML</button><button class="btn sm" data-pp="doc" data-pk="${k ? 1 : 0}">⬇ Word</button><button class="btn sm" data-pp="pdf" data-pk="${k ? 1 : 0}">Print / save as PDF</button></div>`).join("")}
-        <p class="note">The HTML file gives the best layout: open it in your browser and press Ctrl+P. "Print / save as PDF" opens the paper and the print window (choose "Save as PDF" there). The Word file opens in Microsoft Word and can be edited. Arabic text prints correctly in all three.</p>
         ${here.length ? `<details class="sum-box"><summary>Delete questions of this exam</summary>
           <div class="chips">${here.map((q) => `<label class="chip"><input type="checkbox" data-qdel="${esc(q.question_id)}">${esc(q.question_id)}</label>`).join("")}</div>
           <p class="warn-text" id="qdel-warn" hidden></p>
           <label class="tick-line" hidden id="qdel-ok-l"><input type="checkbox" id="qdel-ok"> Yes, delete these questions</label>
           <div class="row-btns"><button class="btn sm" id="qdel-go">Delete the selected questions</button></div></details>` : ""}`
-      : `<p class="note">No questions yet for this course. Add the first one above.</p>`}`;
+      : `<p class="note">No questions yet for this course. Add them in <b>Add questions</b>.</p>`}`;
+    const printHtml = `<h3 class="qm-h">Print ${esc(exam)}</h3>
+      ${here.length ? `<p class="note">${here.length} question(s), ${g2(here.reduce((a, x) => a + (num(x.max_marks) || 0), 0))} marks. The questions are grouped by type, numbered and laid out for printing.</p>
+        ${[["Exam paper", false], ["Answer key", true]].map(([l, k]) => `<div class="qm-print"><b>${l}</b><button class="btn sm" data-pp="html" data-pk="${k ? 1 : 0}">⬇ HTML</button><button class="btn sm" data-pp="doc" data-pk="${k ? 1 : 0}">⬇ Word</button><button class="btn sm" data-pp="pdf" data-pk="${k ? 1 : 0}">Print / save as PDF</button></div>`).join("")}
+        <p class="note">The HTML file gives the best layout: open it in your browser and press Ctrl+P. "Print / save as PDF" opens the paper and the print window (choose "Save as PDF" there). The Word file opens in Microsoft Word and can be edited. Arabic text prints correctly in all three.</p>`
+      : `<p class="note">${esc(exam)} has no questions yet. Add them in <b>Add questions</b>, then print the paper here.</p>`}`;
+    const body = sub === "bank" ? bankHtml : sub === "print" ? printHtml : sub === "reports" ? (T.bpDownloadsTab ? T.bpDownloadsTab(sel, exam) : "") : addHtml;
+    return `${multiHtml}${bar}<div class="sub-body">${body}</div>`;
   };
 
   /* ---------------------------------------------------------------- wiring */
@@ -128,7 +137,9 @@
       d.clos = info.clos.map((x) => String(x.clo_id)).filter((x) => cur.has(x)); d.closFor = d.slo; keep(); redraw(); });
     const img = $("#qd-img", el); if (img) img.onchange = async () => { const f = img.files[0]; if (!f) return; try { d.image = await prepImage(f); keep(); redraw(); } catch (e) { T.toast(e.message); } };
     const ix = $("#qd-img-x", el); if (ix) ix.onclick = () => { d.image = ""; keep(); redraw(); };
-    $("#qd-add", el).onclick = () => addQuestion(sel, exam, d, info);
+    $$("[data-ebtab]", el).forEach((b) => b.onclick = () => { S.ui.ebTab = b.dataset.ebtab; S.saveUi(); redraw(); });
+    const addB = $("#qd-add", el); if (addB) addB.onclick = () => addQuestion(sel, exam, d, info);
+    if ($("#dl-xlsx", el) && T.bpDownloadsWire) T.bpDownloadsWire(sel, exam, el);
     if (T.bpImportWire) T.bpImportWire(sel, exam, el);
     const mg = $("#qm-multi-go", el); if (mg) mg.onclick = () => {
       const multi = qOf(sel).filter((q) => split(q.slos).length > 1);
