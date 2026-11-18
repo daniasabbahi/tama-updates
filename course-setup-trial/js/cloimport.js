@@ -150,11 +150,11 @@
     const lid = "dl-imp-" + T.uid();
     el.innerHTML = `${problems.length ? `<div class="warn-box"><b>Please check these rows:</b><ul>${problems.slice(0, 20).map((p) => `<li>${esc(p)}</li>`).join("")}${problems.length > 20 ? "<li>...</li>" : ""}</ul></div>` : ""}
       ${good.length ? `<div class="ok-box">${good.length} CLO(s) are ready to import. Check them below, then press the Import button. They then appear in the CLO list above, and this preview disappears.</div>
-      <div class="grid g-style"><div class="mode-box"><span class="lbl">How to fill the PLO cells</span>
+      <div class="grid g-mode"><div class="mode-box"><span class="lbl">How to fill the PLO cells</span>
         <div class="seg">${["Type", "Choose from the list"].map((m) => `<button class="${m === s.pmode ? "on" : ""}" data-pm="${m}">${m}</button>`).join("")}</div></div>
         <p class="note">You can change the PLO 1, PLO 2 and PLO 3 cells below before you import. PLOs to choose from: ${esc(ipl.join(", ") || "none yet")}. Typed codes are matched to these whatever the capital letters.</p></div>
       <datalist id="${lid}">${ipl.map((x) => `<option value="${esc(x)}"></option>`).join("")}</datalist>
-      <table class="tbl prev-tbl"><colgroup><col style="width:44px"><col style="width:76px"><col style="width:72px"><col><col style="width:70px"><col style="width:70px"><col style="width:70px"></colgroup>
+      <table class="tbl prev-tbl"><colgroup><col style="width:44px"><col style="width:76px"><col style="width:72px"><col><col style="width:96px"><col style="width:96px"><col style="width:96px"></colgroup>
         <thead><tr><th>#</th><th>CLO ID</th><th>Domain</th><th>CLO statement</th><th>PLO 1</th><th>PLO 2</th><th>PLO 3</th></tr></thead>
         <tbody>${good.map((g, k) => `<tr data-k="${k}"><td class="num">${k + 1}</td><td class="ro">${esc(g.clo_id)}</td><td class="ro">${esc(g.domain)}</td><td class="ro wrap">${esc(g.clo_text)}</td>
           ${PC.map((c) => `<td>${s.pmode === "Type" ? `<input class="cell ${g[c] ? "filled" : ""}" list="${lid}" data-pc="${c}" value="${esc(g[c])}" autocomplete="off">`

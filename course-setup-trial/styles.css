@@ -74,6 +74,7 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .grid.tight { margin: 0; }
 .grid.g-plo { grid-template-columns: minmax(120px, 1fr) 3fr auto; align-items: end; margin: 0; }
 .grid.g-style { grid-template-columns: minmax(0, 1.3fr) auto minmax(0, 1.6fr); align-items: end; }
+.grid.g-mode { grid-template-columns: auto minmax(0, 1fr); align-items: end; }
 .grid.g-tg { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
 .fld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .fld .lbl { font-size: 12.5px; font-weight: 600; color: var(--ink); letter-spacing: .005em; }
@@ -158,6 +159,8 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .tbl .cell:focus { border-color: var(--mauve); background: #fff; }
 .tbl textarea.cell { resize: none; overflow: hidden; line-height: 1.45; display: block; }
 .tbl select.cell { padding: 6px 2px; }
+.tbl input.cell::-webkit-calendar-picker-indicator { display: none !important; }
+.tbl input.cell[list] { text-overflow: clip; }
 .tbl td.num:first-child { color: var(--soft); padding-top: 11px; }
 .locked-id { display: block; padding: 7px 6px; font-weight: 600; color: #111; }
 .confirm-row td { background: #fdf7e8; }
@@ -214,7 +217,7 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 /* ---------- narrow screens */
 @media (max-width: 1000px) {
   .grid.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grid.g-tg, .grid.g-style { grid-template-columns: minmax(0, 1fr); }
+  .grid.g-tg, .grid.g-style, .grid.g-mode { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 860px) {
   .side { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
