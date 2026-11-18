@@ -101,6 +101,7 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .mode-box { display: flex; flex-direction: column; gap: 5px; }
 .mode-box .lbl { font-size: 12.5px; font-weight: 600; }
 .tick { display: inline-flex; gap: 8px; align-items: center; margin: 6px 0; cursor: pointer; }
+.tick[hidden] { display: none; }
 .tick input { accent-color: var(--mauve); width: 16px; height: 16px; }
 
 /* ---------- buttons */
@@ -219,6 +220,31 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .toast button { margin-left: auto; border: 0; background: none; color: #fff; opacity: .7; cursor: pointer; font-size: 16px; line-height: 1; }
 @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
 
+/* ---------- Assessment plan */
+.grid.g-tot { grid-template-columns: minmax(0, 200px) minmax(0, 1fr); align-items: start; }
+.warn-text.inline { display: inline; margin: 0 0 0 6px; }
+.tot-line { margin: 8px 0 0; font-size: 13px; }
+.tbl .calc { display: block; padding: 7px; color: var(--ink); font-size: 13px; }
+.tbl tr.total-row td { background: var(--cream-soft); font-size: 13px; padding-top: 9px; padding-bottom: 9px; }
+.tbl tr.new-row td { background: #fcfbf8; }
+.tbl td.b { font-weight: 700; }
+.plan-tbl th.mth { font-size: 12px; line-height: 1.25; text-align: center; word-break: normal; overflow-wrap: normal; }
+.plan-tbl td.tk { vertical-align: middle; }
+.plan-tbl input[type=checkbox], .ptick { accent-color: var(--mauve); width: 18px; height: 18px; cursor: pointer; }
+.plan-tbl tbody tr:hover td { background: var(--cream-soft); }
+.cols-grid { margin-top: 4px; }
+.col-box { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: #fff; }
+.col-box h4 { margin: 0 0 8px; }
+.sum-grid { align-items: start; }
+.sum-box { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin: 8px 0; background: #fff; }
+.sum-box > summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--navy); }
+.sum-box[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.sum-box .tbl { margin-bottom: 10px; }
+.sum-tbl { table-layout: auto; }
+.sum-tbl td, .sum-tbl th { font-size: 13px; word-break: normal; overflow-wrap: normal; }
+.sum-tbl.kind-tbl { table-layout: fixed; }
+.sum-tbl select.cell { font-size: 12px; }
+
 /* ---------- Ask the assistant */
 .help-btn { position: fixed; right: max(22px, env(safe-area-inset-right, 0px)); bottom: max(22px, env(safe-area-inset-bottom, 0px)); z-index: 40; display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 24px; padding: 11px 18px; background: var(--navy); color: #fff; font-weight: 600; box-shadow: 0 3px 10px rgba(0,0,0,.25); cursor: pointer; }
 .help-btn:hover { background: #1f5f8b; }
@@ -290,6 +316,29 @@ body.panel-open .help-btn { display: none; }
   .top-tbl .nc-word { display: inline; }
   .top-tbl td[data-l] .cell, .slo-tbl td[data-l] .cell { border: 1px solid var(--line); border-radius: 6px; min-height: 34px; }
   .top-tbl tr[data-t]:not(.nc-on) td[data-l] { display: none; }
+  .grid.g-tot { grid-template-columns: 1fr; }
+  .g-tbl, .g-tbl tbody, .g-tbl tr, .g-tbl td, .f-tbl, .f-tbl tbody, .f-tbl tr, .f-tbl td, .plan-tbl, .plan-tbl tbody, .plan-tbl tr, .plan-tbl td, .sum-tbl, .sum-tbl tbody, .sum-tbl tr, .sum-tbl td { display: block; width: 100%; }
+  .g-tbl colgroup, .g-tbl thead, .f-tbl colgroup, .f-tbl thead, .plan-tbl colgroup, .plan-tbl thead, .sum-tbl colgroup, .sum-tbl thead, .g-tbl tr[hidden], .f-tbl tr[hidden] { display: none; }
+  .g-tbl tr[data-i] { display: grid; grid-template-columns: 64px 1fr 1fr 40px; gap: 4px 6px; padding: 8px 4px; border-bottom: 1px solid var(--line); background: none; }
+  .g-tbl tr[data-i] td { border: 0; padding: 0; background: none; }
+  .g-tbl tr[data-i] td:nth-child(1) { grid-column: 1; grid-row: 1; } .g-tbl tr[data-i] td:nth-child(2) { grid-column: 2 / 4; grid-row: 1; } .g-tbl tr[data-i] td:nth-child(7) { grid-column: 4; grid-row: 1; align-self: end; }
+  .g-tbl tr[data-i] td:nth-child(3) { grid-column: 1 / 3; grid-row: 2; } .g-tbl tr[data-i] td:nth-child(4) { grid-column: 3 / 5; grid-row: 2; }
+  .g-tbl tr[data-i] td:nth-child(5) { grid-column: 1 / 3; grid-row: 3; } .g-tbl tr[data-i] td:nth-child(6) { grid-column: 3 / 5; grid-row: 3; }
+  .f-tbl tr.new-row td, .g-tbl tr.new-row td { background: none; }
+  .g-tbl tr.total-row { display: flex; gap: 10px; padding: 8px 4px; } .g-tbl tr.total-row td { width: auto; padding: 0; background: none; } .g-tbl tr.total-row td:empty, .g-tbl tr.total-row td:nth-child(1), .g-tbl tr.total-row td:nth-child(3), .g-tbl tr.total-row td:nth-child(6) { display: none; }
+  .f-tbl tr[data-i] { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  .f-tbl tr[data-i] td { border: 0; padding: 0; } .f-tbl tr[data-i] td:nth-child(1), .f-tbl tr[data-i] td:nth-child(2), .f-tbl tr[data-i] td:nth-child(3) { grid-column: 1; } .f-tbl tr[data-i] td:nth-child(4) { grid-column: 2; grid-row: 1; align-self: end; }
+  .plan-tbl tr[data-i] { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .plan-tbl tr[data-i] td { border: 0; padding: 0; width: auto; background: none !important; }
+  .plan-tbl tr[data-i] td:first-child { display: none; }
+  .plan-tbl tr[data-i] td.wrap { flex-basis: 100%; }
+  .plan-tbl td.tk { display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 6px; font-size: 12px; border: 1px solid var(--line) !important; border-radius: 8px; padding: 4px 8px !important; }
+  .plan-tbl td.tk::before { content: attr(data-l); }
+  .sum-tbl tr { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  .sum-tbl td { border: 0; padding: 1px 0; }
+  .g-tbl td[data-l]::before, .f-tbl td[data-l]::before, .plan-tbl td.ro[data-l]:not([data-l=""])::before, .sum-tbl td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; color: var(--muted, #666); margin-bottom: 2px; }
+  .sum-tbl td[data-l]::before { display: inline; margin-right: 6px; }
+  .sum-tbl td[data-l]::after { content: ""; }
   .donut-wrap { flex-direction: column; }
 }
 @media (max-width: 560px) { .grid.g4 { grid-template-columns: 1fr; } .crumbs > span:first-child, .crumbs > .sep:first-of-type { display: none; } }

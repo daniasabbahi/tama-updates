@@ -70,6 +70,8 @@
       jump: [["h-details", "Course details"], ["h-plos", "PLOs"], ["h-clos", "CLOs"], ["sec-add", "Add CLOs"], ["h-slos", "CLOs and their SLOs"]] },
     "lectures-slos": { name: "Lectures & SLOs", sub: "The SLOs of each lecture or module, each linked to one CLO. Everything saves itself as you type.",
       jump: [["h-slotbl", "SLO table"], ["sec-sloadd", "Add SLOs"], ["h-topics", "Topics not covered"]] },
+    "assessment-plan": { name: "Assessment plan", sub: "The grading breakdown of the course and which assessment methods measure each CLO or SLO. Everything saves itself as you type.",
+      jump: [["h-summ", "Summative"], ["h-form", "Formative"], ["h-plan", "Plan"], ["h-plsum", "Summaries"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -112,9 +114,10 @@
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    const slo = T.page() === "lectures-slos";
+    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan";
     $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW);
+    if (T.page() === "assessment-plan") { T.renderPlanPage(c === NEW ? null : c); return; }
     if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>
@@ -321,6 +324,15 @@
     [["Lecture 1", "SLO1", "List the types of study design.", "K", "CLO1"], ["Lecture 1", "SLO2", "Explain bias and confounding.", "K", "CLO1"], ["Lecture 2", "SLO3", "Use a checklist to appraise a trial.", "S:Cog.", "CLO2"],
       ["Lecture 3", "SLO4", "Run a chi-square test in software.", "S:IT-N", "CLO3"], ["Lecture 4", "SLO5", "Write an informed consent form.", "V", "CLO4"], ["Lecture 4", "SLO6", "Discuss ethics approval steps.", "V", ""]]
       .forEach(([tp, id, t, dm, cl]) => S.t("slos").push({ course_code: k, week: "Week " + tp.slice(-1), topic: tp, slo_id: id, slo_text: t, domain: dm, clo_id: cl, assessment_methods: "", target_kpi: 70 }));
+    // a small assessment plan, so the Assessment plan page has something to show
+    S.data.extra_methods = S.data.extra_methods || {}; S.data.extra_methods[k] = ["Presentations"];
+    S.data.tables.clo_plan = (S.data.tables.clo_plan || []).filter((r) => r.course_code !== k);
+    [["CLO1", "MCQ, Short Essay"], ["CLO2", "Short Essay, Long Essay"], ["CLO3", "MCQ"], ["CLO4", "Presentations"]].forEach(([c, m]) => S.data.tables.clo_plan.push({ course_code: k, clo_id: c, assessment_methods: m }));
+    S.data.course_report = S.data.course_report || {};
+    S.data.course_report[k] = Object.assign(S.data.course_report[k] || {}, { grading_cfg: { total: "100", mode: "Marks" },
+      grading: [{ Assessment: "Midterm exam", Type: "Test-based", Mark: "30", Weight: "30%", "Due date": "Week 7" }, { Assessment: "Presentations", Type: "Performance-based", Mark: "20", Weight: "20%", "Due date": "Week 10" },
+        { Assessment: "Final exam", Type: "Test-based", Mark: "50", Weight: "50%", "Due date": "Week 15" }],
+      formative: [{ Assessment: "One-minute paper", Description: "Students write the main point and the muddiest point of the lecture.", Timing: "Every lecture" }] });
     S.save(); T.toast("Sample course DPHE 858 added."); openCourse(k);
   }
 
