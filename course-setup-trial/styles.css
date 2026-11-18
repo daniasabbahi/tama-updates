@@ -228,7 +228,18 @@ h4 { font-size: 13.5px; font-weight: 600; color: var(--navy); margin: 18px 0 8px
 .tbl tr.total-row td { background: var(--cream-soft); font-size: 13px; padding-top: 9px; padding-bottom: 9px; }
 .tbl tr.new-row td { background: #fcfbf8; }
 .tbl td.b { font-weight: 700; }
-.plan-tbl th.mth { font-size: 12px; line-height: 1.25; text-align: center; word-break: normal; overflow-wrap: normal; }
+.plan-tbl th.mth { font-size: 12px; line-height: 1.25; text-align: center; word-break: normal; overflow-wrap: break-word; }
+.plan-wrap { position: relative; }
+.plan-wrap.scroll { overflow-x: auto; border-radius: 10px; cursor: grab; scrollbar-width: thin; }
+.plan-wrap.scroll.dragging { cursor: grabbing; user-select: none; }
+.plan-wrap.scroll .plan-tbl { margin: 0; overflow: visible; }
+.plan-tbl.scroll th.mth { vertical-align: bottom; padding: 8px 10px; }
+.plan-tbl .stick { position: sticky; z-index: 1; background: #fff; }
+.plan-tbl th.stick { background: var(--cream); z-index: 2; }
+.plan-tbl .stick-last { box-shadow: 6px 0 6px -4px rgba(20, 54, 93, .18); }
+.plan-tbl.vertical th.mth { height: 210px; vertical-align: bottom; padding: 6px 2px; }
+.plan-tbl.vertical th.mth span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; max-height: 200px; text-align: left; line-height: 1.15; white-space: normal; }
+.scroll-hint { margin-top: 4px; }
 .plan-tbl td.tk { vertical-align: middle; }
 .plan-tbl input[type=checkbox], .ptick { accent-color: var(--mauve); width: 18px; height: 18px; cursor: pointer; }
 .plan-tbl tbody tr:hover td { background: var(--cream-soft); }

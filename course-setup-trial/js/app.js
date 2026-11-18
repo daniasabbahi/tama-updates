@@ -58,7 +58,13 @@
     names.forEach((n) => { const f = T.sections[n]; if (f) f(); });
     if (ref) { const b = document.querySelector(`[data-ref="${CSS.escape(ref)}"]`); if (b) { b.focus({ preventScroll: true }); if (sel && "setSelectionRange" in b) try { b.setSelectionRange(...sel); } catch (e) { /* not a text box */ } } }
     window.scrollTo(0, y);
+    regrow();
   };
+  // text boxes in tables grow to show all their text once the page has its final widths (and again when fonts or the window change)
+  const regrow = () => requestAnimationFrame(() => T.$$("textarea.cell").forEach((t) => { if (t.offsetParent) T.autoGrow(t); }));
+  T.regrow = regrow;
+  let rgT = null; window.addEventListener("resize", () => { clearTimeout(rgT); rgT = setTimeout(regrow, 150); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(regrow);
   T.sections = {};
 
   /* ---------------------------------------------------------------- course picker */

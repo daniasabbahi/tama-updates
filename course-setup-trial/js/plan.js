@@ -185,8 +185,8 @@
           <div class="seg">${[["Marks", "✏️ The marks → the weights are calculated"], ["Weight", "✏️ The weights (%) → the marks are calculated"]].map(([v, l]) => `<button class="${mode === v ? "on" : ""}" data-gmode="${v}">${l}</button>`).join("")}</div></div>
       </div>
       <p class="note">Type each assessment with its ${mode === "Marks" ? "mark" : "weight (%)"} and due date. The ${calc.toLowerCase()} is worked out at once from the total course marks, and everything saves itself. To move an assessment, type its new place in <b>Order</b> (e.g. 1 puts it first). Type a new assessment in the empty last row.</p>
-      <table class="tbl g-tbl"><colgroup><col style="width:58px"><col><col style="width:23%"><col style="width:168px"><col style="width:92px"><col style="width:96px"><col style="width:12%"><col style="width:56px"></colgroup>
-      <thead><tr><th>Order</th><th>Assessment</th><th>Assessment method</th><th>Type</th><th>Mark${calc === "Mark" ? " (calculated)" : ""}</th><th>Weight${calc === "Weight" ? " (calculated)" : ""}</th><th>Due date</th><th>Delete</th></tr></thead>
+      <table class="tbl g-tbl"><colgroup><col style="width:58px"><col style="width:30%"><col><col style="width:162px"><col style="width:66px"><col style="width:80px"><col style="width:10%"><col style="width:42px"></colgroup>
+      <thead><tr><th>Order</th><th>Assessment</th><th>Assessment method</th><th>Type</th><th>Mark${calc === "Mark" ? " (calc.)" : ""}</th><th>Weight${calc === "Weight" ? " (calc.)" : ""}</th><th>Due date</th><th title="Delete">🗑</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-i="${i}"><td data-l="Order"><input class="cell num-in filled" type="number" min="1" step="1" value="${i + 1}" data-gi="${i}" data-gc="Order" data-ref="g:${i}:Order" title="Type a number to move the assessment to that place, e.g. 1 puts it first"></td>
           ${GCOLS.map((c) => cell(i, c, r[c], c === "Due date" ? "e.g. Week 6" : "")).join("")}
           <td class="ctr"><button class="icon-btn" data-gdel="${i}" title="Delete this assessment" aria-label="Delete">🗑</button></td></tr>
@@ -288,7 +288,7 @@
       const look = Object.fromEntries(mine("clo_plan", sel).map((p) => [String(p.clo_id), p.assessment_methods]));
       return T.closOf(sel).map((c) => ({ id: String(c.clo_id), statement: T.s(c.clo_text), domain: T.s(c.domain), methods: split(look[String(c.clo_id)]) }));
     }
-    return mine("slos", sel).map((r) => ({ id: String(r.slo_id), statement: T.s(r.slo_text), domain: T.s(r.domain), lecture: T.s(r.topic), clo: T.s(r.clo_id), methods: split(r.assessment_methods) }));
+    return mine("slos", sel).map((r) => ({ id: String(r.slo_id), statement: T.s(r.slo_text), domain: T.s(r.domain), lecture: T.s(r.topic), week: T.s(r.week), clo: T.s(r.clo_id), methods: split(r.assessment_methods) }));
   }
   const ticked = (r, m) => r.methods.some((x) => x.toUpperCase() === m.toUpperCase());
   /** Write one outcome's ticks back: the methods in TAMA's order, plus any saved name that is not a column (kept, never lost). */
@@ -307,6 +307,41 @@
     S.save();
   }
 
+  /** Scroll view: the outcome columns stay in place and 5 assessment columns fill the rest of the window; drag to see more. */
+  let dragOn = null;
+  window.addEventListener("mouseup", () => { if (dragOn) { dragOn.w.classList.remove("dragging"); dragOn = null; } });
+  function fitPlan(el, n) {
+    const wrap = $("#plan-wrap", el); if (!wrap || !wrap.classList.contains("scroll")) return;
+    const t = $(".plan-tbl", wrap), cols = $$("col", t), nInfo = cols.length - n;
+    if (window.innerWidth <= 760) { t.style.width = ""; return; }
+    const W = wrap.clientWidth;
+    // the outcome columns get fixed pixel widths (the learning outcome takes what is left of about half the window)
+    const info = cols.slice(0, nInfo).map((c) => { const w = c.style.width || ""; return w.endsWith("%") ? Math.round(W * parseFloat(w) / 100) : w.endsWith("px") ? parseFloat(w) : null; });
+    const fixedSum = info.reduce((a, w) => a + (w || 0), 0);
+    const stmt = Math.max(240, Math.round(W * 0.48) - fixedSum);
+    const sizes = info.map((w) => (w === null ? stmt : w)), infoW = sizes.reduce((a, w) => a + w, 0);
+    const each = Math.max(110, Math.floor((W - infoW) / Math.min(5, Math.max(n, 1))));
+    cols.slice(0, nInfo).forEach((c, k) => { c.style.width = `${sizes[k]}px`; });
+    cols.slice(nInfo).forEach((c) => { c.style.width = `${each}px`; });
+    t.style.width = `${Math.max(W, infoW + each * n)}px`;
+    // the outcome columns (left) stay fixed while the assessments scroll
+    let left = 0;
+    cols.slice(0, nInfo).forEach((c, k) => {
+      const cells = $$(`tr > :nth-child(${k + 1})`, t);
+      const w = cells.length ? cells[0].getBoundingClientRect().width : 0;
+      cells.forEach((x) => { x.classList.add("stick"); x.style.left = `${left}px`; if (k === nInfo - 1) x.classList.add("stick-last"); });
+      left += w;
+    });
+    wrap.onmousedown = (e) => { if (e.target.closest("input,a,select,textarea")) return; dragOn = { w: wrap, x: e.pageX, s: wrap.scrollLeft }; wrap.classList.add("dragging"); };
+    wrap.onmousemove = (e) => { if (dragOn && dragOn.w === wrap) { wrap.scrollLeft = dragOn.s - (e.pageX - dragOn.x); e.preventDefault(); } };
+  }
+
+  /** The type of an assessment of this course: the Type chosen in the Summative table first, else the saved / guessed type. */
+  function kindOf(sel, m) {
+    const r = gradingRows(sel).find((x) => T.s(x.Assessment).toUpperCase() === T.s(m).toUpperCase());
+    return r && DR_KINDS[r.Type] ? DR_KINDS[r.Type] : methodKind(m);
+  }
+
   T.sections.plan = function () {
     const sel = T.current(), el = $("#sec-plan"); if (!el) return;
     const basis = basisOf(), rows = planRows(sel, basis), ms = methods(sel);
@@ -315,14 +350,16 @@
     if (rows.length && !ms.length) body = `<div class="info-box"><span>Add the assessments in the <b>Summative assessment</b> table above first. Each assessment becomes a column here to tick.</span></div>`;
     else if (!rows.length) body = `<div class="info-box"><span>This course has no ${basis} yet. Add them in ${basis === "SLOs" ? "Lectures & SLOs" : "Course setup"}.</span><a class="btn sm" href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">Go to ${where}</a></div>`;
     else {
-      const info = basis === "SLOs" ? [["lecture", "Lecture / module", "13%"], ["id", "ID", "60px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"], ["clo", "Linked CLO", "70px"]]
+      const info = basis === "SLOs" ? [["week", "Date / Week", "84px"], ["lecture", "Lecture / module", "13%"], ["id", "ID", "60px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"], ["clo", "Linked CLO", "70px"]]
         : [["id", "ID", "60px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"]];
-      const mw = Math.max(64, Math.min(112, Math.floor(620 / ms.length)));
+      const view = S.ui.planView === "scroll" ? "scroll" : "vertical";   // vertical names by default; "scroll" = about 5 at a time, drag sideways
+      const mw = view === "vertical" ? 46 : 128;
       body = `<p class="note">The columns are the assessments of the Summative assessment table. Tick every assessment used to assess each outcome. Each tick saves itself. The ID, learning outcome${basis === "SLOs" ? ", domain, lecture and linked CLO" : " and domain"} are changed in the <a href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">${where}</a> page.</p>
-        <table class="tbl plan-tbl"><colgroup><col style="width:36px">${info.map(([, , w]) => `<col${w ? ` style="width:${w}"` : ""}>`).join("")}${ms.map(() => `<col style="width:${mw}px">`).join("")}</colgroup>
-        <thead><tr><th>#</th>${info.map(([, l]) => `<th>${l}</th>`).join("")}${ms.map((m) => `<th class="mth" title="${esc(methodKind(m))}">${esc(m)}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map((r, i) => `<tr data-i="${i}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""} ${k === "clo" && !r.clo ? "no-clo-text" : ""}" data-l="${k === "statement" ? "" : esc(info.find((x) => x[0] === k)[1])}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
-          ${ms.map((m) => `<td class="ctr tk" data-l="${esc(m)}"><input type="checkbox" class="ptick" data-pi="${i}" data-pm="${esc(m)}" data-ref="p:${i}:${esc(m)}" ${ticked(r, m) ? "checked" : ""} aria-label="${esc(r.id)} assessed by ${esc(m)}"></td>`).join("")}</tr>`).join("")}</tbody></table>`;
+        ${view === "scroll" && ms.length > 5 ? `<p class="note scroll-hint">The table has ${ms.length} assessments: drag it sideways (or use the scroll bar under it) to see them all. The outcome columns stay in place.</p>` : ""}
+        <div class="plan-wrap ${view}" id="plan-wrap"><table class="tbl plan-tbl ${view}"><colgroup><col style="width:36px">${info.map(([, , w]) => `<col${w ? ` style="width:${w}"` : ""}>`).join("")}${ms.map(() => `<col style="width:${mw}px">`).join("")}</colgroup>
+        <thead><tr><th>#</th>${info.map(([, l]) => `<th>${l}</th>`).join("")}${ms.map((m) => `<th class="mth" title="${esc(m)} (${esc(kindOf(sel, m))})"><span>${esc(m).replace(/\//g, "/<wbr>")}</span></th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r, i) => `<tr data-i="${i}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro ${k === "statement" || k === "lecture" || k === "week" ? "wrap" : ""} ${k === "id" ? "b" : ""} ${k === "clo" && !r.clo ? "no-clo-text" : ""}" data-l="${k === "statement" ? "" : esc(info.find((x) => x[0] === k)[1])}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
+          ${ms.map((m) => `<td class="ctr tk" data-l="${esc(m)}"><input type="checkbox" class="ptick" data-pi="${i}" data-pm="${esc(m)}" data-ref="p:${i}:${esc(m)}" ${ticked(r, m) ? "checked" : ""} aria-label="${esc(r.id)} assessed by ${esc(m)}"></td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
     }
     const ex = extras(sel), cms = colMethods(sel);
     const have = new Set(cms.map((m) => m.toUpperCase()));
@@ -347,6 +384,7 @@
               <div class="row-btns"><button class="btn sm" id="pc-del-go">Delete column</button></div>` : `<p class="note">Nothing to delete. MCQ, Short Essay and Long Essay cannot be deleted.</p>`}</div>
         </div></details>` : ""}`;
 
+    fitPlan(el, ms.length);
     $$("[data-basis]", el).forEach((b) => b.onclick = () => { S.ui.planBasis = b.dataset.basis; S.saveUi(); T.refresh("plan", "planSum"); });
     $$(".ptick", el).forEach((cb) => cb.onchange = () => {
       const r = rows[+cb.dataset.pi];
@@ -409,7 +447,7 @@
     if (!nOut) { el.innerHTML = `<div class="sec-head" id="h-plsum"><div><h2>Summaries</h2><p class="sub">They appear once the course has ${basis}.</p></div></div>`; return; }
     const cov = (list) => rows.filter((r) => list.some((m) => ticked(r, m))).length;
     const ticks = (list) => rows.reduce((s, r) => s + list.filter((m) => ticked(r, m)).length, 0);
-    const kindRows = KINDS.map((k) => { const l = ms.filter((m) => methodKind(m) === k); const c = cov(l);
+    const kindRows = KINDS.map((k) => { const l = ms.filter((m) => kindOf(sel, m) === k); const c = cov(l);
       return { "Type of assessment": k, Methods: l.join(", ") || "-", "Number of methods": l.length, [`${basis} assessed`]: c, [`% of ${basis}`]: `${nOut ? Math.round(c / nOut * 100) : 0}%`, "Total ticks": ticks(l) }; });
     const all = cov(ms);
     kindRows.push({ "Type of assessment": "All types", Methods: "", "Number of methods": ms.length, [`${basis} assessed`]: all, [`% of ${basis}`]: `${Math.round(all / nOut * 100)}%`, "Total ticks": ticks(ms) });
@@ -463,7 +501,7 @@
       <h4>How many outcomes each method assesses</h4>
       <div class="grid g2 sum-grid">
         <div><table class="tbl sum-tbl kind-tbl"><colgroup><col style="width:46%"><col><col style="width:22%"></colgroup><thead><tr><th>Type of assessment</th><th>Method</th><th>${basis} assessed</th></tr></thead>
-          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === methodKind(m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody></table>
+          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody></table>
           <p class="note">The type of each method is filled in from its name: MCQ and essays are test-based; presentations, simulation, portfolio, OSPE, OSCE, Mini-CEX, DOPS, case-based and workplace assessments are performance-based; surveys and feedback are indirect; anything else is 'Others'. If a type is wrong, choose another one. It saves itself.</p></div>
         <div>${smallTable(Object.keys(kindRows[0]), kindRows, "type-tbl")}
           <p class="note">${basis} assessed = how many of the ${nOut} ${basis} are assessed by at least one method of that type.</p></div>
@@ -471,7 +509,11 @@
       <h4>Questions linked to the ${basis}</h4>
       ${qHtml}${sloClo}${cloTypes}`;
 
-    $$("[data-km]", el).forEach((s) => s.onchange = () => { setKind(ms[+s.dataset.km], s.value); S.save(); T.toast(`${ms[+s.dataset.km]} is now counted as ${s.value.toLowerCase()}.`); T.refresh("plan", "planSum", "summative"); });
+    $$("[data-km]", el).forEach((s) => s.onchange = () => {
+      const m = ms[+s.dataset.km]; setKind(m, s.value);
+      const g = crStore(sel).grading;   // the Type in the Summative table follows (Test-based / Performance-based, else empty)
+      if (Array.isArray(g)) g.forEach((r) => { if (T.s(r.Assessment).toUpperCase() === m.toUpperCase()) r.Type = Object.keys(DR_KINDS).find((x) => DR_KINDS[x] === s.value) || ""; });
+      S.save(); T.toast(`${ms[+s.dataset.km]} is now counted as ${s.value.toLowerCase()}.`); T.refresh("plan", "planSum", "summative"); });
     $("#plan-csv", el).onclick = () => {
       const info = basis === "SLOs" ? [["lecture", "lecture"], ["id", "outcome_id"], ["statement", "statement"], ["domain", "domain"], ["clo", "linked_clo"]] : [["id", "outcome_id"], ["statement", "statement"], ["domain", "domain"]];
       const q = (v) => `"${T.s(v).replace(/"/g, '""')}"`;
