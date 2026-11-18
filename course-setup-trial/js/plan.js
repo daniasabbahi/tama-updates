@@ -469,6 +469,7 @@
     const cov = (list) => rows.filter((r) => list.some((m) => ticked(r, m))).length;
     const ticks = (list) => rows.reduce((s, r) => s + list.filter((m) => ticked(r, m)).length, 0);
     // Dania 2026-11-19: the per-type summary table was removed; the totals by type sit at the end of the method table instead
+    const bcView = S.ui.bcView === "table" ? "table" : "graph";   // the coverage summary shows as a bar graph or a table (Dania 2026-11-19)
     const byKind = (k) => cov(ms.filter((m) => kindOf(sel, m) === k));
     // Dania 2026-11-19: totals shown as cards (big number + bar) instead of table rows
     const card = (cls, label, c, note) => { const pc = nOut ? Math.round(c / nOut * 100) : 0;
@@ -526,10 +527,13 @@
       <h4>How many ${basis} are assessed</h4>
       ${cards}
       <div class="bc-head"><h4>How many ${basis} each assessment covers</h4>
-        <span class="bc-dl"><button class="btn sm" id="bc-png" title="Download the bar graph as a picture">⬇ Graph</button><button class="btn sm" id="bc-xlsx" title="Download it as a table (Excel)">⬇ Excel</button></span></div>
-      <div class="bar-chart">${ms.map((m) => { const c = cov([m]), k = kindOf(sel, m), pc = nOut ? Math.round(c / nOut * 100) : 0;
+        <span class="bc-dl"><span class="seg sm">${[["graph", "Graph"], ["table", "Table"]].map(([v, l]) => `<button class="${bcView === v ? "on" : ""}" data-bcv="${v}">${l}</button>`).join("")}</span><button class="btn sm" id="bc-png" title="Download the bar graph as a picture">⬇ Graph</button><button class="btn sm" id="bc-xlsx" title="Download it as a table (Excel)">⬇ Excel</button></span></div>
+      ${bcView === "table" ? `<table class="tbl sum-tbl bc-tbl"><colgroup><col><col style="width:30%"><col style="width:16%"><col style="width:14%"></colgroup>
+        <thead><tr><th>Assessment</th><th>Type of assessment</th><th class="num">${basis} assessed</th><th class="num">% of ${basis}</th></tr></thead>
+        <tbody>${ms.map((m) => { const c = cov([m]), pc = nOut ? Math.round(c / nOut * 100) : 0; return `<tr><td class="wrap" data-l="Assessment">${esc(m)}</td><td data-l="Type of assessment">${esc(kindOf(sel, m))}</td><td class="num" data-l="${basis} assessed">${c} of ${nOut}</td><td class="num" data-l="% of ${basis}">${pc}%</td></tr>`; }).join("")}</tbody></table>`
+      : `<div class="bar-chart">${ms.map((m) => { const c = cov([m]), k = kindOf(sel, m), pc = nOut ? Math.round(c / nOut * 100) : 0;
         return `<div class="bc-row"><div class="bc-name" title="${esc(m)}">${esc(m)}</div><div class="bc-track"><i class="${k.startsWith("Test") ? "t" : k.startsWith("Perf") ? "p" : "o"}" style="width:${pc}%"></i></div><div class="bc-num">${c} <small>of ${nOut} (${pc}%)</small></div></div>`; }).join("")}
-        <div class="bc-key"><span><i class="p"></i>Performance-based</span><span><i class="t"></i>Test-based</span>${ms.some((m) => !/^(Test|Perf)/.test(kindOf(sel, m))) ? `<span><i class="o"></i>Other types</span>` : ""}</div></div>
+        <div class="bc-key"><span><i class="p"></i>Performance-based</span><span><i class="t"></i>Test-based</span>${ms.some((m) => !/^(Test|Perf)/.test(kindOf(sel, m))) ? `<span><i class="o"></i>Other types</span>` : ""}</div></div>`}
       <h4>Questions linked to the ${basis}</h4>
       ${qHtml}${sloClo}${cloTypes}`;
 
@@ -541,6 +545,7 @@
     // the bar chart: download as a picture (PNG) or as a table (Excel)
     const chartRows = ms.map((m) => { const c = cov([m]), k = kindOf(sel, m); return { m, k, c, pc: nOut ? Math.round(c / nOut * 100) : 0 }; });
     const fileBase = `${basis}_covered_by_each_assessment_${T.baseCode(sel).replace(/\s+/g, "_")}`;
+    $$("[data-bcv]", el).forEach((b) => b.onclick = () => { S.ui.bcView = b.dataset.bcv; S.saveUi(); T.refresh("planSum"); });
     $("#bc-xlsx", el).onclick = async () => {
       try { await T.importer.lib("xlsx"); } catch (e) { T.toast(e.message); return; }
       const aoa = [["Assessment", "Type of assessment", `${basis} assessed`, `Total ${basis}`, `% of ${basis}`], ...chartRows.map((r) => [r.m, r.k, r.c, nOut, r.pc])];
