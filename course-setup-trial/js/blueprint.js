@@ -62,7 +62,7 @@
     let body;
     if (!rows.length) body = `<div class="info-box"><span>This course has no ${basis} yet. Add them in ${basis === "SLOs" ? "Lectures & SLOs" : "Course setup"}.</span><a class="btn sm" href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">Go there</a></div>`;
     else if (!ex.length) body = `<div class="info-box"><span>No test-based assessment yet. In the <b>Summative assessment</b> table of the Assessment plan, choose <b>Test-based assessment / اختبارات</b> as the method of the quizzes and exams, and they appear here.</span><a class="btn sm" href="#assessment-plan">Go to Assessment plan</a></div>`;
-    else if (!exam || !ex.includes(exam)) body = `<div class="info-box"><span>Choose the test in <b>The exam</b> above, and its ${basis} appear here.</span></div>`;
+    else if (!exam || !ex.includes(exam)) body = `<div class="info-box"><span>Choose the test in <b>Test blueprint</b> above, and its ${basis} appear here.</span></div>`;
     else {
       const info = basis === "SLOs" ? [["week", "Date / Week", 62], ["lecture", "Lecture / module", 110], ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64], ["clo", "Linked CLO", 62]]
         : [["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64]];
@@ -78,7 +78,7 @@
           ${TYPES.map((t, ti) => `<td class="ctr bx g0 ${inPlan ? "inplan" : "off"} ${ti === 0 ? "first" : ""}"><input type="checkbox" data-bt="${ti}" data-bi="${i}" data-ref="bx:${i}:${ti}" ${on.has(t) ? "checked" : ""} ${inPlan ? "" : "disabled"} aria-label="${esc(r.id)}: ${esc(exam)} ${t}" title="${inPlan ? `${esc(exam)}: ${t}` : `Not planned for ${esc(exam)} in the Assessment plan`}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
         <div class="bx-key"><span><i class="inplan"></i>Ticked for ${esc(exam)} in the Assessment plan</span><span><i class="off"></i>Not planned for this test (locked)</span></div>`;
     }
-    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types${exam && ex.includes(exam) ? ` of ${esc(exam)}` : ""}</h2><p class="sub">Copied from the plan to measure learning outcomes, for the test chosen in The exam above.</p></div></div>${body}`;
+    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types${exam && ex.includes(exam) ? ` of ${esc(exam)}` : ""}</h2><p class="sub">Copied from the plan to measure learning outcomes, for the test chosen in Test blueprint above.</p></div></div>${body}`;
     $$("[data-bt]", el).forEach((c) => c.onchange = () => {
       const r = rows[+c.dataset.bi], t = TYPES[+c.dataset.bt];
       setType(sel, exam, basis, r.id, t, c.checked); T.refresh("bpPlan", "bpTab");
@@ -110,7 +110,7 @@
             if (fx) return `<tr><td class="ro">${esc(d)}</td><td class="ro fixed-min" title="Fixed: always ${FIXED_MCQ[basis][d]} minute(s) for an MCQ of this domain">${g2(FIXED_MCQ[basis][d])} <span class="muted">(fixed)</span></td></tr>`;
             return `<tr><td class="ro">${esc(d)}</td><td><input type="text" inputmode="decimal" class="cell ${v !== null ? "filled" : ""} ${miss ? "need" : ""}" data-mt="${t}" data-md="${esc(d)}" data-ref="m:${t}:${esc(d)}" value="${v === null ? "" : esc(g2(v))}" ${miss ? `title="Needed: an outcome of this domain has ${t} ticked"` : ""}></td></tr>`; }).join("")}</tbody></table></div>`).join("")}</div>`;
     }
-    el.innerHTML = `<div class="sec-head" id="h-bpexam"><div><h2>The exam</h2><p class="sub">Choose the test you want to build the blueprint for. Each test-based assessment is a separate exam with its own duration, minutes per question, question types, weights and questions. Everything saves itself.</p></div></div>
+    el.innerHTML = `<div class="sec-head" id="h-bpexam"><div><h2>Test blueprint</h2><p class="sub">Choose the test you want to build the blueprint for. Each test-based assessment is a separate exam with its own duration, minutes per question, question types, weights and questions. Everything saves itself.</p></div></div>
       <div class="grid g3 bp-exam">
         <label class="fld ${exam ? "filled" : ""}" for="bp-exam"><span class="lbl">Test <i class="hint" title="The test-based assessments (quizzes, midterm, final ...) of the Summative assessment table in the Assessment plan.">?</i></span>
           <select id="bp-exam" data-ref="bp-exam"><option value="" ${exam ? "" : "selected"}>${ex.length ? "Choose a test" : "Add the test-based assessments in the Summative table first"}</option>
@@ -161,7 +161,7 @@
     const tab = TABS.some(([k]) => k === S.ui.bpTab) ? S.ui.bpTab : "build";
     const exam = examOf(sel);
     let body;
-    if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>The exam</b> above first.</span></div>`;
+    if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>Test blueprint</b> above first.</span></div>`;
     else if (tab === "build") body = builder(sel, exam);
     else if (tab === "map") body = T.bpMapTab(sel, exam);
     else body = T.bpDownloadsTab(sel, exam);
@@ -266,12 +266,12 @@
         <td class="ctr b tot ${bad ? "bad" : ""}">${g2(r.total)}</td></tr>`; }).join("")}</tbody></table></div>
       <p class="note">The totals, the colours, the flags and the blueprint update as soon as you enter a weight.</p>`;
     let msgs = "";
-    if (need.length) msgs += `<p class="warn-text">The minutes needed to answer one question were not completed for: ${esc(need.join("; "))}. The questions of these types cannot be counted until the minutes are entered (in "Minutes needed to answer one question" in The exam above).</p>`;
+    if (need.length) msgs += `<p class="warn-text">The minutes needed to answer one question were not completed for: ${esc(need.join("; "))}. The questions of these types cannot be counted until the minutes are entered (in "Minutes needed to answer one question" in Test blueprint above).</p>`;
     const miss = []; TYPES.forEach((t) => wr.forEach((r) => { if (r.eff[t] > 0 && r.min[t] === null) miss.push(`${r.id} (${t}, domain ${r.domain})`); }));
     if (miss.length) msgs += `<p class="warn-text">These question types are NOT counted yet because the minutes per question are empty for their domain: ${esc(miss.join("; "))}.</p>`;
     let res = "";
     if (over.length) res = `<p class="warn-text">The total importance weight of an outcome cannot be more than 3. Your numbers are kept and shown in orange; lower the MCQ, Short Essay or Long Essay weights of: ${esc(over.join(", "))}. The blueprint cannot be calculated or saved until every total is 3 or less.</p>`;
-    else if (actual <= 0) res = `<p class="warn-text">Enter an exam duration that is greater than the revision time in The exam above.</p>`;
+    else if (actual <= 0) res = `<p class="warn-text">Enter an exam duration that is greater than the revision time in Test blueprint above.</p>`;
     else if (R.totalW === 0) res = `<div class="info-box"><span>Enter the importance weights (0 to 3) for the planned question types above to see how many questions are needed. The blueprint plan saves itself once the numbers can be calculated.</span></div>`;
     else res = results(sel, exam, R);
     return `${live(R)}${msgs}${overview(R, exam)}${wHtml}${res}`;
