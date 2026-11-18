@@ -307,24 +307,31 @@
     S.save();
   }
 
-  /** Scroll view: the outcome columns stay in place and 5 assessment columns fill the rest of the window; drag to see more. */
+  /** Lay out the plan table: the learning outcome always keeps a readable width (at least 320px, words never split);
+      up to 10 assessments sit next to it when the window has room, otherwise 10 are in view and the table drags sideways
+      while the outcome columns stay in place. */
   let dragOn = null;
   window.addEventListener("mouseup", () => { if (dragOn) { dragOn.w.classList.remove("dragging"); dragOn = null; } });
+  window.addEventListener("resize", () => { clearTimeout(fitPlan.t); fitPlan.t = setTimeout(() => { const el = $("#sec-plan"); if (el && T.page() === "assessment-plan") T.refresh("plan"); }, 200); });
+  const STMT_MIN = 320, COL_W = 46;
   function fitPlan(el, n) {
-    const wrap = $("#plan-wrap", el); if (!wrap || !wrap.classList.contains("scroll")) return;
+    const wrap = $("#plan-wrap", el); if (!wrap) return;
     const t = $(".plan-tbl", wrap), cols = $$("col", t), nInfo = cols.length - n;
-    if (window.innerWidth <= 760) { t.style.width = ""; return; }
+    if (window.innerWidth <= 760) { t.style.width = ""; wrap.classList.remove("scroll"); return; }   // phones: one card per outcome
     const W = wrap.clientWidth;
-    // the outcome columns get fixed pixel widths (the learning outcome takes what is left of about half the window)
-    const info = cols.slice(0, nInfo).map((c) => { const w = c.style.width || ""; return w.endsWith("%") ? Math.round(W * parseFloat(w) / 100) : w.endsWith("px") ? parseFloat(w) : null; });
-    const fixedSum = info.reduce((a, w) => a + (w || 0), 0);
-    const stmt = Math.max(240, Math.round(W * 0.48) - fixedSum);
-    const sizes = info.map((w) => (w === null ? stmt : w)), infoW = sizes.reduce((a, w) => a + w, 0);
-    const vert = t.classList.contains("vertical"), show = vert ? 10 : 5;   // vertical names: 10 assessments in view; across: 5
-    const each = Math.max(vert ? 46 : 110, Math.floor((W - infoW) / Math.min(show, Math.max(n, 1))));
-    cols.slice(0, nInfo).forEach((c, k) => { c.style.width = `${sizes[k]}px`; });
-    cols.slice(nInfo).forEach((c) => { c.style.width = `${each}px`; });
-    t.style.width = `${Math.max(W, infoW + each * n)}px`;
+    const fixed = cols.slice(0, nInfo).map((c) => (c.dataset.k === "statement" ? null : parseFloat(c.style.width) || 0));
+    const fixedSum = fixed.reduce((a, w) => a + (w || 0), 0);
+    const inView = Math.min(n, 10);
+    const stmt = Math.max(STMT_MIN, W - fixedSum - inView * COL_W);
+    const total = fixedSum + stmt + n * COL_W;
+    cols.slice(0, nInfo).forEach((c, k) => { c.style.width = `${fixed[k] === null ? stmt : fixed[k]}px`; });
+    cols.slice(nInfo).forEach((c) => { c.style.width = `${COL_W}px`; });
+    const drag = total > W + 1;
+    t.style.width = drag ? `${total}px` : "100%";
+    wrap.classList.toggle("scroll", drag);
+    const hint = $("#plan-hint", el); if (hint) hint.hidden = !drag;
+    $$(".stick", t).forEach((x) => { x.classList.remove("stick", "stick-last"); x.style.left = ""; });
+    if (!drag) return;
     // the outcome columns (left) stay fixed while the assessments scroll
     let left = 0;
     cols.slice(0, nInfo).forEach((c, k) => {
@@ -351,16 +358,16 @@
     if (rows.length && !ms.length) body = `<div class="info-box"><span>Add the assessments in the <b>Summative assessment</b> table above first. Each assessment becomes a column here to tick.</span></div>`;
     else if (!rows.length) body = `<div class="info-box"><span>This course has no ${basis} yet. Add them in ${basis === "SLOs" ? "Lectures & SLOs" : "Course setup"}.</span><a class="btn sm" href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">Go to ${where}</a></div>`;
     else {
-      const info = basis === "SLOs" ? [["week", "Date / Week", "84px"], ["lecture", "Lecture / module", "13%"], ["id", "ID", "60px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"], ["clo", "Linked CLO", "70px"]]
-        : [["id", "ID", "60px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"]];
+      const info = basis === "SLOs" ? [["week", "Date / Week", "58px"], ["lecture", "Lecture / module", "120px"], ["id", "ID", "54px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "60px"], ["clo", "Linked CLO", "58px"]]
+        : [["id", "ID", "56px"], ["statement", "Learning outcome", ""], ["domain", "Domain", "64px"]];
       // Dania 2026-11-19: names written vertically; up to 10 assessments all fit, more than 10 = 10 in view and drag sideways
-      const view = "vertical", drag = ms.length > 10;
+      const view = "vertical";
       const mw = view === "vertical" ? 46 : 128;
       body = `<p class="note">The columns are the assessments of the Summative assessment table. Tick every assessment used to assess each outcome. Each tick saves itself. The ID, learning outcome${basis === "SLOs" ? ", domain, lecture and linked CLO" : " and domain"} are changed in the <a href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">${where}</a> page.</p>
-        ${drag ? `<p class="note scroll-hint">The table has ${ms.length} assessments: drag it sideways (or use the scroll bar under it) to see them all. The outcome columns stay in place.</p>` : ""}
-        <div class="plan-wrap ${view} ${drag ? "scroll" : ""}" id="plan-wrap"><table class="tbl plan-tbl ${view}"><colgroup><col style="width:36px">${info.map(([, , w]) => `<col${w ? ` style="width:${w}"` : ""}>`).join("")}${ms.map(() => `<col style="width:${mw}px">`).join("")}</colgroup>
-        <thead><tr><th>#</th>${info.map(([, l]) => `<th>${l}</th>`).join("")}${ms.map((m) => `<th class="mth" title="${esc(m)} (${esc(kindOf(sel, m))})"><span>${esc(m).replace(/\//g, "/<wbr>")}</span></th>`).join("")}</tr></thead>
-        <tbody>${rows.map((r, i) => `<tr data-i="${i}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro ${k === "statement" || k === "lecture" || k === "week" ? "wrap" : ""} ${k === "id" ? "b" : ""} ${k === "clo" && !r.clo ? "no-clo-text" : ""}" data-l="${k === "statement" ? "" : esc(info.find((x) => x[0] === k)[1])}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
+        <p class="note scroll-hint" id="plan-hint" hidden>The table has ${ms.length} assessments: drag it sideways (or use the scroll bar under it) to see them all. The outcome columns stay in place.</p>
+        <div class="plan-wrap ${view}" id="plan-wrap"><table class="tbl plan-tbl ${view}"><colgroup><col style="width:30px">${info.map(([k, , w]) => `<col data-k="${k}"${w ? ` style="width:${w}"` : ""}>`).join("")}${ms.map(() => `<col style="width:${mw}px">`).join("")}</colgroup>
+        <thead><tr><th>#</th>${info.map(([, l]) => `<th class="words">${l}</th>`).join("")}${ms.map((m) => `<th class="mth" title="${esc(m)} (${esc(kindOf(sel, m))})"><span>${esc(m).replace(/\//g, "/<wbr>")}</span></th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r, i) => `<tr data-i="${i}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro ${k === "statement" || k === "lecture" || k === "week" ? "wrap words" : ""} ${k === "id" ? "b" : ""} ${k === "clo" && !r.clo ? "no-clo-text" : ""}" data-l="${k === "statement" ? "" : esc(info.find((x) => x[0] === k)[1])}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
           ${ms.map((m) => `<td class="ctr tk" data-l="${esc(m)}"><input type="checkbox" class="ptick" data-pi="${i}" data-pm="${esc(m)}" data-ref="p:${i}:${esc(m)}" ${ticked(r, m) ? "checked" : ""} aria-label="${esc(r.id)} assessed by ${esc(m)}"></td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
     }
     const ex = extras(sel), cms = colMethods(sel);
