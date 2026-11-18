@@ -384,3 +384,14 @@ body.panel-open .help-btn { display: none; }
 .bc-key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--soft); }
 .bc-key span { display: inline-flex; align-items: center; gap: 6px; } .bc-key i { width: 12px; height: 12px; border-radius: 3px; }
 @media (max-width: 760px) { .bc-row { grid-template-columns: 1fr auto; gap: 4px 10px; } .bc-name { grid-column: 1 / -1; } }
+/* Assessment plan: total cards */
+.kcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 900px; margin-bottom: 6px; }
+.kcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; }
+.kcard .lab { font-size: 13px; color: var(--soft); font-weight: 600; }
+.kcard .big { font: 700 30px/1.2 var(--serif); color: var(--navy); margin-top: 4px; }
+.kcard .big small { font: 500 14px var(--font); color: var(--soft); }
+.kbar { height: 8px; border-radius: 6px; background: var(--cream); margin: 10px 0 6px; overflow: hidden; }
+.kbar i { display: block; height: 100%; border-radius: 6px; }
+.kcard.p .kbar i { background: var(--mauve); } .kcard.t .kbar i { background: var(--navy); } .kcard.a .kbar i { background: var(--ok); }
+.kcard .pct { font-size: 12px; color: var(--soft); }
+@media (max-width: 760px) { .kcards { grid-template-columns: minmax(0, 1fr); } }

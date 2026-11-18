@@ -470,6 +470,12 @@
     const ticks = (list) => rows.reduce((s, r) => s + list.filter((m) => ticked(r, m)).length, 0);
     // Dania 2026-11-19: the per-type summary table was removed; the totals by type sit at the end of the method table instead
     const byKind = (k) => cov(ms.filter((m) => kindOf(sel, m) === k));
+    // Dania 2026-11-19: totals shown as cards (big number + bar) instead of table rows
+    const card = (cls, label, c, note) => { const pc = nOut ? Math.round(c / nOut * 100) : 0;
+      return `<div class="kcard ${cls}"><div class="lab">${label}</div><div class="big">${c} <small>of ${nOut} ${basis}</small></div><div class="kbar"><i style="width:${pc}%"></i></div><div class="pct">${pc}% of ${basis} · ${note}</div></div>`; };
+    const nK = (k) => ms.filter((m) => kindOf(sel, m) === k).length, plural = (n) => `${n} assessment${n === 1 ? "" : "s"}`;
+    const allC = cov(ms);
+    const cards = `<div class="kcards">${card("p", "Performance-based assessment", byKind("Performance-based assessment"), plural(nK("Performance-based assessment")))}${card("t", "Test-based assessment", byKind("Test-based assessment"), plural(nK("Test-based assessment")))}${card("a", "All assessments together", allC, `${nOut - allC} not assessed yet`)}</div>`;
     const none = rows.filter((r) => !ms.some((m) => ticked(r, m))).map((r) => r.id);
 
     // questions linked to the outcomes (from the Exam blueprint's question mapping)
@@ -517,11 +523,12 @@
     el.innerHTML = `<div class="sec-head" id="h-plsum"><div><h2>Summaries of the plan</h2><p class="sub">They follow the ticks above at once.</p></div>
         <button class="btn sm" id="plan-csv">Download plan (CSV)</button></div>
       ${none.length ? `<p class="warn-text">Not yet assessed by any method: ${esc(none.join(", "))}</p>` : `<div class="ok-box">Every learning outcome in this plan is assessed by at least one method.</div>`}
+      <h4>How many ${basis} are assessed</h4>
+      ${cards}
       <h4>How many outcomes each method assesses</h4>
       <div class="sum-one">
         <div><table class="tbl sum-tbl kind-tbl"><colgroup><col style="width:46%"><col><col style="width:22%"></colgroup><thead><tr><th>Type of assessment</th><th>Method</th><th>${basis} assessed</th></tr></thead>
-          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody>
-          <tfoot>${[["Performance-based assessment", "performance-based"], ["Test-based assessment", "test-based"]].map(([k, w]) => `<tr class="total-row"><td colspan="2" data-l="">${basis} assessed by ${w} assessment</td><td data-l="${basis} assessed" class="num">${byKind(k)} of ${nOut}</td></tr>`).join("")}</tfoot></table>
+          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody></table>
           <p class="note">The type of each method is filled in from its name: MCQ and essays are test-based; presentations, simulation, portfolio, OSPE, OSCE, Mini-CEX, DOPS, case-based and workplace assessments are performance-based; surveys and feedback are indirect; anything else is 'Others'. If a type is wrong, choose another one. It saves itself.</p></div>
       </div>
       <h4>How many ${basis} each assessment covers</h4>
