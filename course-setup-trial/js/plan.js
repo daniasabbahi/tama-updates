@@ -526,7 +526,7 @@
       <h4>How many ${basis} are assessed</h4>
       ${cards}
       <div class="bc-head"><h4>How many ${basis} each assessment covers</h4>
-        <span class="bc-dl"><button class="btn sm" id="bc-png">Download as bar graph (picture)</button><button class="btn sm" id="bc-xlsx">Download as table (Excel)</button></span></div>
+        <span class="bc-dl"><button class="btn sm" id="bc-png" title="Download the bar graph as a picture">⬇ Graph</button><button class="btn sm" id="bc-xlsx" title="Download it as a table (Excel)">⬇ Excel</button></span></div>
       <div class="bar-chart">${ms.map((m) => { const c = cov([m]), k = kindOf(sel, m), pc = nOut ? Math.round(c / nOut * 100) : 0;
         return `<div class="bc-row"><div class="bc-name" title="${esc(m)}">${esc(m)}</div><div class="bc-track"><i class="${k.startsWith("Test") ? "t" : k.startsWith("Perf") ? "p" : "o"}" style="width:${pc}%"></i></div><div class="bc-num">${c} <small>of ${nOut} (${pc}%)</small></div></div>`; }).join("")}
         <div class="bc-key"><span><i class="p"></i>Performance-based</span><span><i class="t"></i>Test-based</span>${ms.some((m) => !/^(Test|Perf)/.test(kindOf(sel, m))) ? `<span><i class="o"></i>Other types</span>` : ""}</div></div>
