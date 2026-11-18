@@ -179,6 +179,8 @@
     };
     const n = rows.length;
     el.innerHTML = `<div class="sec-head" id="h-summ"><div><h2>Summative assessment</h2><p class="sub">The grading breakdown of the course. The Syllabus and the Course Specification take it from here.</p></div></div>
+      <div class="def-box"><b>What is summative assessment?</b> Assessment <i>of</i> learning: it is given marks and counts toward the final grade, usually at the end of a unit or the course, to judge how well students achieved the learning outcomes.
+        <span class="ex">Examples: midterm and final exams, quizzes, graded assignments, projects, presentations, OSCE / OSPE, portfolios.</span></div>
       <div class="grid g-tot">
         ${T.field({ id: "g-total", label: "1. Total course marks", value: total, help: "The full mark of the whole course, e.g. 100" })}
         <div class="fld"><span class="lbl">2. What will you type in the table?</span>
@@ -248,7 +250,9 @@
     const rows = (Array.isArray(d.formative) ? d.formative : []).map((r) => Object.fromEntries(FCOLS.map(([c]) => [c, clean(r[c])])));
     const n = rows.length;
     const cell = (i, c, lab, v, ph) => `<td data-l="${lab}"><textarea rows="1" class="cell ${T.s(v).trim() ? "filled" : ""}" data-fi="${i}" data-fc="${c}" data-ref="f:${i}:${c}" ${ph ? `placeholder="${esc(ph)}"` : ""} spellcheck="true">${esc(v)}</textarea></td>`;
-    el.innerHTML = `<div class="sec-head" id="h-form"><div><h2>Formative assessment (indirect assessment)</h2><p class="sub">Assessments without marks that give feedback on learning, e.g. surveys, student feedback, reflection, one-minute paper. Saved by itself.</p></div></div>
+    el.innerHTML = `<div class="sec-head" id="h-form"><div><h2>Formative assessment (indirect assessment)</h2><p class="sub">Saved by itself.</p></div></div>
+      <div class="def-box"><b>What is formative assessment?</b> Assessment <i>for</i> learning: it has no marks and happens during teaching, to give feedback to students and teachers so learning can improve before the final grade.
+        <span class="ex">Examples: one-minute paper, in-class questions or polls, practice quizzes without marks, peer feedback, reflection, student surveys.</span></div>
       <table class="tbl f-tbl"><colgroup><col style="width:26%"><col><col style="width:20%"><col style="width:56px"></colgroup>
       <thead><tr><th>Assessment</th><th>Description / purpose</th><th>Timing</th><th>Delete</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-i="${i}">${FCOLS.map(([c, lab, ph]) => cell(i, c, lab, r[c], ph)).join("")}<td class="ctr"><button class="icon-btn" data-fdel="${i}" title="Delete this row" aria-label="Delete">🗑</button></td></tr>

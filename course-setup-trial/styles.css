@@ -403,3 +403,7 @@ body.panel-open .help-btn { display: none; }
 .bc-dl .seg.sm button { font-size: 12px; padding: 3px 10px; }
 .bc-tbl { max-width: 900px; }
 .bc-tbl th.num, .bc-tbl td.num { text-align: right; }
+/* short definitions above the Summative and Formative tables */
+.def-box { background: var(--mauve-tint); border-left: 3px solid var(--mauve); border-radius: 8px; padding: 9px 14px; margin: 4px 0 14px; font-size: 13px; line-height: 1.5; }
+.def-box b { color: var(--navy); }
+.def-box .ex { display: block; color: var(--soft); margin-top: 3px; }
