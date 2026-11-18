@@ -525,13 +525,8 @@
       ${none.length ? `<p class="warn-text">Not yet assessed by any method: ${esc(none.join(", "))}</p>` : `<div class="ok-box">Every learning outcome in this plan is assessed by at least one method.</div>`}
       <h4>How many ${basis} are assessed</h4>
       ${cards}
-      <h4>How many outcomes each method assesses</h4>
-      <div class="sum-one">
-        <div><table class="tbl sum-tbl kind-tbl"><colgroup><col style="width:46%"><col><col style="width:22%"></colgroup><thead><tr><th>Type of assessment</th><th>Method</th><th>${basis} assessed</th></tr></thead>
-          <tbody>${ms.map((m, i) => `<tr><td data-l="Type of assessment"><select class="cell filled" data-km="${i}" data-ref="k:${i}">${KINDS.map((k) => `<option ${k === kindOf(sel, m) ? "selected" : ""}>${k}</option>`).join("")}</select></td><td data-l="Method" class="wrap">${esc(m)}</td><td data-l="${basis} assessed" class="num">${cov([m])}</td></tr>`).join("")}</tbody></table>
-          <p class="note">The type of each method is filled in from its name: MCQ and essays are test-based; presentations, simulation, portfolio, OSPE, OSCE, Mini-CEX, DOPS, case-based and workplace assessments are performance-based; surveys and feedback are indirect; anything else is 'Others'. If a type is wrong, choose another one. It saves itself.</p></div>
-      </div>
-      <h4>How many ${basis} each assessment covers</h4>
+      <div class="bc-head"><h4>How many ${basis} each assessment covers</h4>
+        <span class="bc-dl"><button class="btn sm" id="bc-png">Download as bar graph (picture)</button><button class="btn sm" id="bc-xlsx">Download as table (Excel)</button></span></div>
       <div class="bar-chart">${ms.map((m) => { const c = cov([m]), k = kindOf(sel, m), pc = nOut ? Math.round(c / nOut * 100) : 0;
         return `<div class="bc-row"><div class="bc-name" title="${esc(m)}">${esc(m)}</div><div class="bc-track"><i class="${k.startsWith("Test") ? "t" : k.startsWith("Perf") ? "p" : "o"}" style="width:${pc}%"></i></div><div class="bc-num">${c} <small>of ${nOut} (${pc}%)</small></div></div>`; }).join("")}
         <div class="bc-key"><span><i class="p"></i>Performance-based</span><span><i class="t"></i>Test-based</span>${ms.some((m) => !/^(Test|Perf)/.test(kindOf(sel, m))) ? `<span><i class="o"></i>Other types</span>` : ""}</div></div>
@@ -543,6 +538,39 @@
       const g = crStore(sel).grading;   // the Type in the Summative table follows (Test-based / Performance-based, else empty)
       if (Array.isArray(g)) g.forEach((r) => { if (T.s(r.Assessment).toUpperCase() === m.toUpperCase()) r.Type = Object.keys(DR_KINDS).find((x) => DR_KINDS[x] === s.value) || ""; });
       S.save(); T.toast(`${ms[+s.dataset.km]} is now counted as ${s.value.toLowerCase()}.`); T.refresh("plan", "planSum", "summative"); });
+    // the bar chart: download as a picture (PNG) or as a table (Excel)
+    const chartRows = ms.map((m) => { const c = cov([m]), k = kindOf(sel, m); return { m, k, c, pc: nOut ? Math.round(c / nOut * 100) : 0 }; });
+    const fileBase = `${basis}_covered_by_each_assessment_${T.baseCode(sel).replace(/\s+/g, "_")}`;
+    $("#bc-xlsx", el).onclick = async () => {
+      try { await T.importer.lib("xlsx"); } catch (e) { T.toast(e.message); return; }
+      const aoa = [["Assessment", "Type of assessment", `${basis} assessed`, `Total ${basis}`, `% of ${basis}`], ...chartRows.map((r) => [r.m, r.k, r.c, nOut, r.pc])];
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = [{ wch: 48 }, { wch: 30 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Coverage"); XLSX.writeFile(wb, `${fileBase}.xlsx`);
+    };
+    $("#bc-png", el).onclick = () => {
+      const sc = 2, W = 1000, nameW = 330, numW = 120, pad = 24, font = "13px Inter, 'Segoe UI', sans-serif";
+      const cv = document.createElement("canvas"), g = cv.getContext("2d"); g.font = font;
+      const wrapText = (t) => { const out = []; let line = ""; t.split(/\s+/).forEach((w) => { const x = line ? `${line} ${w}` : w; if (g.measureText(x).width > nameW - 12 && line) { out.push(line); line = w; } else line = x; }); out.push(line); return out; };
+      const lines = chartRows.map((r) => wrapText(r.m)), rowH = lines.map((l) => Math.max(30, l.length * 17 + 12));
+      const H = pad * 2 + 40 + rowH.reduce((a, b) => a + b, 0) + 40;
+      cv.width = W * sc; cv.height = H * sc; g.scale(sc, sc);
+      g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "#14365d"; g.font = "600 16px Inter, 'Segoe UI', sans-serif"; g.fillText(`How many ${basis} each assessment covers – ${T.s(sel)}`, pad, pad + 14);
+      let y = pad + 40; const barX = pad + nameW, barW = W - pad * 2 - nameW - numW;
+      const col = (k) => (k.startsWith("Test") ? "#14365d" : k.startsWith("Perf") ? "#8a5d80" : "#9aa3b2");
+      chartRows.forEach((r, i) => {
+        const h = rowH[i], mid = y + h / 2;
+        g.font = font; g.fillStyle = "#1f2430"; lines[i].forEach((t, j) => g.fillText(t, pad, mid - (lines[i].length - 1) * 8.5 + j * 17 + 4));
+        g.fillStyle = "#f7f0e6"; g.beginPath(); g.roundRect(barX, mid - 6, barW, 12, 6); g.fill();
+        if (r.pc) { g.fillStyle = col(r.k); g.beginPath(); g.roundRect(barX, mid - 6, Math.max(12, barW * r.pc / 100), 12, 6); g.fill(); }
+        g.textAlign = "right"; g.fillStyle = "#14365d"; g.font = "600 13px Inter, 'Segoe UI', sans-serif"; g.fillText(`${r.c} of ${nOut} (${r.pc}%)`, W - pad, mid + 4); g.textAlign = "left";
+        y += h;
+      });
+      g.font = "12px Inter, 'Segoe UI', sans-serif"; let x = pad; y += 22;
+      [["Performance-based", "#8a5d80"], ["Test-based", "#14365d"], ...(chartRows.some((r) => !/^(Test|Perf)/.test(r.k)) ? [["Other types", "#9aa3b2"]] : [])].forEach(([l, c]) => {
+        g.fillStyle = c; g.fillRect(x, y - 10, 12, 12); g.fillStyle = "#5f6676"; g.fillText(l, x + 18, y); x += g.measureText(l).width + 44; });
+      cv.toBlob((bl) => { const a = document.createElement("a"); a.href = URL.createObjectURL(bl); a.download = `${fileBase}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+    };
     $("#plan-csv", el).onclick = () => {
       const info = basis === "SLOs" ? [["lecture", "lecture"], ["id", "outcome_id"], ["statement", "statement"], ["domain", "domain"], ["clo", "linked_clo"]] : [["id", "outcome_id"], ["statement", "statement"], ["domain", "domain"]];
       const q = (v) => `"${T.s(v).replace(/"/g, '""')}"`;

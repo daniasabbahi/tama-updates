@@ -395,3 +395,6 @@ body.panel-open .help-btn { display: none; }
 .kcard.p .kbar i { background: var(--mauve); } .kcard.t .kbar i { background: var(--navy); } .kcard.a .kbar i { background: var(--ok); }
 .kcard .pct { font-size: 12px; color: var(--soft); }
 @media (max-width: 760px) { .kcards { grid-template-columns: minmax(0, 1fr); } }
+.bc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; max-width: 900px; margin: 20px 0 10px; }
+.bc-head h4 { margin: 0; }
+.bc-dl { display: flex; gap: 8px; flex-wrap: wrap; }
