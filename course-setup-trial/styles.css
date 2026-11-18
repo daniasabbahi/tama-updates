@@ -450,3 +450,19 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .bp-out td.t-bad { background: #fde7c2; color: var(--warn); } .bp-out td.t-ok { background: #d8f0e2; color: var(--ok); }
 .bp-det td, .bp-det th { font-size: 12px; white-space: nowrap; }
 @media (max-width: 760px) { .kcards.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bp-exam { grid-template-columns: minmax(0, 1fr); } }
+/* Blueprint: question mapping */
+.qm-h { font: 600 17px var(--serif); color: var(--navy); margin: 18px 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+.chip { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--field); border-radius: 16px; padding: 3px 10px; font-size: 13px; cursor: pointer; background: #fff; }
+.chip.on { background: var(--filled); border-color: #b9cbe6; }
+.chip input { margin: 0; }
+.qd-pic { max-height: 70px; border-radius: 6px; border: 1px solid var(--line); }
+.qm-print { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; } .qm-print b { min-width: 96px; color: var(--navy); }
+.qm-list tr.other td { color: var(--soft); }
+.qm-list td, .qm-list th { font-size: 12.5px; }
+.tick-line { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 6px 0; }
+.qm-multi table { margin-top: 8px; background: #fff; }
+.qm-k { margin: 6px 0 10px; }
+.chip input[type=checkbox] { all: revert; margin: 0; width: auto; height: auto; }
+.fld > .chips { border: 0; padding: 2px 0; }
+@media (min-width: 761px) { .fld > .seg { align-self: flex-start; } }

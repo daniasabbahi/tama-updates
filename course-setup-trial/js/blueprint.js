@@ -147,10 +147,12 @@
     let body;
     if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>The exam</b> above first.</span></div>`;
     else if (tab === "build") body = builder(sel, exam);
+    else if (tab === "map") body = T.bpMapTab(sel, exam);
     else body = `<div class="info-box"><span>This part is being rebuilt next. Until then, use it in TAMA.</span></div>`;
     el.innerHTML = `<div class="tabs" id="h-bptab">${TABS.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-bptab="${k}">${l}</button>`).join("")}</div>${body}`;
     $$("[data-bptab]", el).forEach((b) => b.onclick = () => { S.ui.bpTab = b.dataset.bptab; S.saveUi(); T.refresh("bpTab"); });
     if (tab === "build" && exam && exam !== NEW) wireBuilder(sel, exam, el);
+    if (tab === "map" && exam && exam !== NEW) T.bpMapWire(sel, exam, el);
   };
 
   /* ---------------------------------------------------------------- the blueprint builder (TAMA's calculation, unchanged) */
