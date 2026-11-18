@@ -72,11 +72,12 @@
       ${unlinked.length ? `<p class="warn-text">These SLOs are not linked to a CLO (shown as ${NO_CLO}): row(s) ${T.fmtRows(unlinked)}. Choose a Linked CLO for them if they should count towards a CLO.</p>` : ""}
       ${noTopic.length || noTxt.length || noDom.length ? `<p class="warn-text">${noTopic.length ? `Add the lecture / module in row(s) ${T.fmtRows(noTopic)}. ` : ""}${noTxt.length ? `Add the SLO statement in row(s) ${T.fmtRows(noTxt)}. ` : ""}${noDom.length ? `Choose the learning domain in row(s) ${T.fmtRows(noDom)}. ` : ""}Nothing is lost while rows are unfinished.</p>` : ""}
       <datalist id="${tid}">${topics.map((t) => `<option value="${esc(t)}"></option>`).join("")}</datalist>
-      <table class="tbl slo-tbl"><colgroup><col style="width:58px"><col style="width:17%"><col style="width:64px"><col><col style="width:104px"><col style="width:104px"><col style="width:78px"><col style="width:56px"></colgroup>
-      <thead><tr><th>Order</th><th>Lecture / module</th><th>SLO ID</th><th>SLO statement</th><th title="${DOMAIN_HELP}">Learning domain</th><th>Linked CLO</th><th>Target KPI (%)</th><th>Delete</th></tr></thead>
+      <table class="tbl slo-tbl"><colgroup><col style="width:96px"><col style="width:58px"><col style="width:17%"><col style="width:64px"><col><col style="width:104px"><col style="width:104px"><col style="width:78px"><col style="width:56px"></colgroup>
+      <thead><tr><th title="The date or week this SLO is taught, e.g. Week 3 or 14/09/2026">Date / Week</th><th>Order</th><th>Lecture / module</th><th>SLO ID</th><th>SLO statement</th><th title="${DOMAIN_HELP}">Learning domain</th><th>Linked CLO</th><th>Target KPI (%)</th><th>Delete</th></tr></thead>
       <tbody>${rows.map((r, i) => {
         const linked = cloIds.includes(T.s(r.clo_id));
         return `<tr data-i="${i}">
+        <td data-l="Date / Week"><textarea rows="1" class="cell ${T.s(r.week).trim() ? "filled" : ""}" data-ref="slo:${i}:week" data-c="week" placeholder="e.g. Week 1" spellcheck="false">${esc(r.week)}</textarea></td>
         <td data-l="Order"><input class="cell num-in filled" type="number" min="1" step="1" value="${i + 1}" data-ref="slo:${i}:order" data-c="order" title="Type a number to put this SLO in that place."></td>
         <td data-l="Lecture / module"><textarea rows="1" class="cell ${T.s(r.topic).trim() ? "filled" : ""}" list="${tid}" data-ref="slo:${i}:topic" data-c="topic" spellcheck="true">${esc(r.topic)}</textarea></td>
         <td data-l="SLO ID"><span class="locked-id" title="Numbered automatically">${esc(r.slo_id)}</span></td>
@@ -85,7 +86,7 @@
         <td data-l="Linked CLO"><select class="cell ${linked ? "filled" : "no-clo"}" data-ref="slo:${i}:clo_id" data-c="clo_id" title="Choose ${NO_CLO} for an SLO that is not linked to a CLO.">${cloIds.map((c) => `<option ${c === r.clo_id ? "selected" : ""}>${esc(c)}</option>`).join("")}<option value="" ${linked ? "" : "selected"}>${NO_CLO}</option></select></td>
         <td data-l="Target KPI (%)"><input class="cell num-in filled" type="number" min="0" max="100" step="1" value="${T.num(r.target_kpi, 70)}" data-ref="slo:${i}:target_kpi" data-c="target_kpi"></td>
         <td class="ctr"><button class="icon-btn" data-del="${i}" title="Delete this SLO" aria-label="Delete">🗑</button></td></tr>
-        <tr class="confirm-row" data-confirm="${i}" hidden><td colspan="8"><span class="warn-text">Delete ${esc(r.slo_id || "this SLO")}? The SLOs after it are renumbered. This cannot be undone.</span>
+        <tr class="confirm-row" data-confirm="${i}" hidden><td colspan="9"><span class="warn-text">Delete ${esc(r.slo_id || "this SLO")}? The SLOs after it are renumbered. This cannot be undone.</span>
           <button class="btn sm" data-yes="${i}">Yes, delete</button> <button class="btn sm ghost" data-no="${i}">Cancel, keep it</button></td></tr>`; }).join("")}</tbody></table>`
       : `<div class="info-box"><span>${esc(T.baseCode(sel))} has no SLOs yet. Add them in the box below.</span></div>`}`;
 
@@ -97,8 +98,8 @@
         if (f.tagName === "TEXTAREA") { T.autoGrow(f); r[c] = f.value; S.saveSoon(); }
       });
       if (f.tagName !== "SELECT") f.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); f.blur(); } });
-      if (c === "topic" || c === "slo_text")
-        f.addEventListener("paste", (e) => T.pasteGrid(e, f, "slo", rows, ["topic", "slo_text"], () => { S.save(); T.refresh("slotbl", "sloadd", "topics"); }));
+      if (c === "week" || c === "topic" || c === "slo_text")
+        f.addEventListener("paste", (e) => T.pasteGrid(e, f, "slo", rows, c === "week" ? ["week"] : ["topic", "slo_text"], () => { S.save(); T.refresh("slotbl", "sloadd", "topics"); }));
       f.addEventListener("change", () => {
         if (c === "order") {
           let to = Math.round(T.num(f.value, i + 1)); to = Math.max(1, Math.min(rows.length, to));
@@ -111,6 +112,7 @@
           if (c === "topic") T.refresh("sloadd", "topics");
           return;
         }
+        if (c === "week") { r.week = f.value.trim(); f.value = r.week; S.save(); return; }
         if (c === "target_kpi") { const v = Math.max(0, Math.min(100, T.num(f.value, 70))); f.value = v; r.target_kpi = v; S.save(); return; }
         r[c] = f.value; S.save();
         if (c === "clo_id") { f.classList.toggle("no-clo", !f.value); f.classList.toggle("filled", !!f.value); }
@@ -141,13 +143,14 @@
     if (tab === "import") { renderImport($("#slo-add-body"), sel); return; }
 
     const dr = (S.ui.sloDraft = S.ui.sloDraft || {});
-    const d = dr[sel] || (dr[sel] = { domain: "", topic: "", clo: "", text: "", place: "At the end", target: 70 });
+    const d = dr[sel] || (dr[sel] = { week: "", domain: "", topic: "", clo: "", text: "", place: "At the end", target: 70 });
     const places = ["At the end", ...(rows.length ? ["At the very beginning"] : []), ...rows.map((r) => `After ${r.slo_id} (${T.s(r.topic).slice(0, 40)})`)];
     if (!places.includes(d.place)) d.place = "At the end";
     const cloOpts = [...clos.map((c) => [String(c.clo_id), cloLabel(c)]), [NO_CLO, NO_CLO]];
     if (d.clo && !cloOpts.some((o) => o[0] === d.clo)) d.clo = "";
     const topics = [...new Set(rows.map((r) => T.s(r.topic).trim()).filter(Boolean))];
-    $("#slo-add-body").innerHTML = `<div class="grid g2">
+    $("#slo-add-body").innerHTML = `<div class="grid g3">
+        ${T.field({ id: "ns-week", label: "Date / Week", value: d.week || "", placeholder: "e.g. Week 1 or 14/09/2026" })}
         ${T.select({ id: "ns-domain", label: "Learning domain", req: true, value: d.domain, placeholder: "Select a domain", options: T.SLO_DOMAINS, help: DOMAIN_HELP })}
         ${T.field({ id: "ns-topic", label: "Lecture / module title", req: true, value: d.topic, options: topics, placeholder: "Choose or type" })}
       </div>
@@ -161,7 +164,7 @@
       <div class="row-btns end"><button class="btn primary" id="ns-add">Add SLO</button></div>
       <p class="warn-text" id="ns-msg" hidden></p>`;
     const body = $("#slo-add-body");
-    const sync = () => { d.domain = $("#ns-domain").value; d.topic = $("#ns-topic").value; d.clo = $("#ns-clo").value; d.text = $("#ns-text").value; d.place = $("#ns-place").value; d.target = $("#ns-target").value; S.saveUi(); };
+    const sync = () => { d.week = $("#ns-week").value; d.domain = $("#ns-domain").value; d.topic = $("#ns-topic").value; d.clo = $("#ns-clo").value; d.text = $("#ns-text").value; d.place = $("#ns-place").value; d.target = $("#ns-target").value; S.saveUi(); };
     $$("input, select, textarea", body).forEach((f) => {
       if (f.tagName === "TEXTAREA") T.autoGrow(f);
       f.addEventListener("input", () => { T.markFilled(f); if (f.tagName === "TEXTAREA") T.autoGrow(f); sync(); });
@@ -173,11 +176,11 @@
       const stxt = T.cap1(T.s(d.text).trim(), "SLO statement"), stopic = T.cap1(T.s(d.topic).trim(), "Lecture");
       const missing = [["learning domain", d.domain], ["lecture / module title", stopic], ["linked CLO", d.clo], ["SLO statement", stxt]].filter((x) => !x[1]).map((x) => x[0]);
       if (missing.length) { msg.hidden = false; msg.textContent = "Please fill in: " + missing.join(", ") + "."; return; }
-      const row = { course_code: sel, topic: stopic, slo_id: "", slo_text: stxt, domain: d.domain, clo_id: d.clo === NO_CLO ? "" : d.clo, assessment_methods: "", target_kpi: Math.max(0, Math.min(100, T.num(d.target, 70))) };
+      const row = { course_code: sel, week: T.s(d.week).trim(), topic: stopic, slo_id: "", slo_text: stxt, domain: d.domain, clo_id: d.clo === NO_CLO ? "" : d.clo, assessment_methods: "", target_kpi: Math.max(0, Math.min(100, T.num(d.target, 70))) };
       const k = d.place === "At the end" ? rows.length : d.place === "At the very beginning" ? 0 : rows.findIndex((r) => d.place.startsWith(`After ${r.slo_id} (`)) + 1;
       storeSlos(sel, [...rows.slice(0, k), row, ...rows.slice(k)]);
       T.toast(`SLO${k + 1} saved at position ${k + 1}` + (k < rows.length ? "; the SLOs after it were renumbered." : "."));
-      dr[sel] = { domain: "", topic: d.topic, clo: "", text: "", place: "At the end", target: 70 };   // the lecture title stays for the next SLO of the same lecture
+      dr[sel] = { week: d.week, domain: "", topic: d.topic, clo: "", text: "", place: "At the end", target: 70 };   // the lecture title stays for the next SLO of the same lecture
       S.saveUi();
       T.refresh("slotbl", "sloadd", "topics");
       const t = $("#ns-text"); if (t) t.focus({ preventScroll: true });
@@ -199,7 +202,7 @@
     const store = (S.ui.sloImport = S.ui.sloImport || {});
     const s = store[sel];
     const clos = T.closOf(sel), cloIds = clos.map((c) => String(c.clo_id));
-    box.innerHTML = `<p class="note">One row per SLO. Needed: SLO statement, lecture / topic and domain. Optional: SLO ID, linked CLO, target KPI.</p>
+    box.innerHTML = `<p class="note">One row per SLO. Needed: SLO statement, lecture / topic and domain. Optional: date / week, SLO ID, linked CLO, target KPI.</p>
       <div class="info-box"><span>The same Excel file is used for CLOs and SLOs: it has two sheets, <b>CLOs</b> and <b>SLOs</b>. Fill both, then upload the same file here and on Course setup. Each page reads its own sheet.</span>
         <button class="btn sm" id="stpl">Download the example Excel file (CLOs and SLOs)</button></div>
       <div class="drop" id="sdrop"><input type="file" id="slo-file" accept=".xlsx,.xls,.xlsm,.csv,.docx,.pdf" hidden>
@@ -231,7 +234,7 @@
       ${s.raw ? `<div class="raw">${T.tableHtml(cols, tbl.rows.slice(0, 30))}</div>` : ""}
       <h4>Which column is which?</h4>
       <div class="grid g3">${colSel("s-text", "SLO statement", s.text, true)}${colSel("s-topic", "Lecture / topic", s.topic, true)}${colSel("s-dom", "Domain", s.dom, true)}</div>
-      <div class="grid g3">${colSel("s-id", "SLO ID (optional)", s.id)}${colSel("s-clo", "Linked CLO (optional)", s.clo)}${colSel("s-kpi", "Target KPI (optional)", s.kpi)}</div>
+      <div class="grid g4">${colSel("s-week", "Date / Week (optional)", s.week)}${colSel("s-id", "SLO ID (optional)", s.id)}${colSel("s-clo", "Linked CLO (optional)", s.clo)}${colSel("s-kpi", "Target KPI (optional)", s.kpi)}</div>
       <div class="grid g2">
         ${T.select({ id: "s-dclo", label: "Link to this CLO when the file has no valid CLO", value: s.dclo, options: [["", "(empty - leave the CLO link empty)"], ...clos.map((c) => [String(c.clo_id), cloLabel(c)])] })}
         ${T.field({ id: "s-dkpi", label: "Target KPI (%) for imported SLOs (also used where the file column is empty)", value: s.dkpi })}
@@ -243,7 +246,7 @@
     const redo = () => { S.saveUi(); renderImport(box, sel); };
     const st = $("#s-tbl", el); if (st) st.onchange = () => { s.pick = +st.value; setMap(s); redo(); };
     $("#s-raw", el).onchange = (e) => { s.raw = e.target.checked; redo(); };
-    [["s-text", "text"], ["s-topic", "topic"], ["s-dom", "dom"], ["s-id", "id"], ["s-clo", "clo"], ["s-kpi", "kpi"], ["s-dclo", "dclo"]].forEach(([id, k]) => { $("#" + id, el).onchange = (e) => { s[k] = e.target.value; redo(); }; });
+    [["s-week", "week"], ["s-text", "text"], ["s-topic", "topic"], ["s-dom", "dom"], ["s-id", "id"], ["s-clo", "clo"], ["s-kpi", "kpi"], ["s-dclo", "dclo"]].forEach(([id, k]) => { $("#" + id, el).onchange = (e) => { s[k] = e.target.value; redo(); }; });
     $("#s-dkpi", el).onchange = (e) => { s.dkpi = Math.max(0, Math.min(100, T.num(e.target.value, 70))); redo(); };
     $$("[data-smode]", el).forEach((b) => b.onclick = () => { s.mode = b.dataset.smode; s.okReplace = false; redo(); });
 
@@ -278,14 +281,14 @@
       }
       let kpi = T.num(s.dkpi, 70);
       if (s.kpi) { const kv = parseFloat(r[s.kpi]); if (!isNaN(kv)) kpi = Math.min(Math.max(kv, 0), 100); }
-      good.push({ course_code: sel, topic: T.cap1(top, "Lecture"), slo_id: sid, slo_text: T.cap1(txt, "SLO statement"), domain: dm, clo_id: clo, assessment_methods: "", target_kpi: kpi });
+      good.push({ course_code: sel, week: s.week ? T.s(r[s.week]).trim() : "", topic: T.cap1(top, "Lecture"), slo_id: sid, slo_text: T.cap1(txt, "SLO statement"), domain: dm, clo_id: clo, assessment_methods: "", target_kpi: kpi });
     });
     chk.innerHTML = `${problems.length ? `<div class="warn-box"><b>These rows cannot be imported and will be skipped:</b><ul>${problems.slice(0, 20).map((p) => `<li>${esc(p)}</li>`).join("")}${problems.length > 20 ? "<li>...</li>" : ""}</ul></div>` : ""}
       ${unmatched.length ? `<p class="warn-text">These CLOs in the file are not CLOs of this course, so their SLOs ${s.dclo ? "get the CLO chosen above" : "are left without a CLO"}: ${esc(unmatched.join(", "))}. This course's CLOs are ${esc(cloIds.join(", "))}. Add or import the CLOs first, or fix the file.</p>` : ""}
       ${good.length ? `<div class="ok-box">${good.length} SLO(s) are ready to import. Check them below, then press the Import button. They then appear in the SLO list above, and this preview disappears.</div>
-        <table class="tbl"><colgroup><col style="width:17%"><col style="width:64px"><col><col style="width:80px"><col style="width:84px"><col style="width:78px"></colgroup>
-        <thead><tr><th>Lecture / topic</th><th>SLO ID</th><th>SLO statement</th><th>Domain</th><th>Linked CLO</th><th>Target KPI (%)</th></tr></thead>
-        <tbody>${good.map((g) => `<tr><td class="wrap">${esc(g.topic)}</td><td>${esc(g.slo_id)}</td><td class="wrap">${esc(g.slo_text)}</td><td>${esc(g.domain)}</td><td class="${g.clo_id ? "" : "no-clo-text"}">${esc(g.clo_id || NO_CLO)}</td><td class="num">${g.target_kpi}</td></tr>`).join("")}</tbody></table>
+        <table class="tbl"><colgroup><col style="width:90px"><col style="width:17%"><col style="width:64px"><col><col style="width:80px"><col style="width:84px"><col style="width:78px"></colgroup>
+        <thead><tr><th>Date / Week</th><th>Lecture / topic</th><th>SLO ID</th><th>SLO statement</th><th>Domain</th><th>Linked CLO</th><th>Target KPI (%)</th></tr></thead>
+        <tbody>${good.map((g) => `<tr><td class="wrap">${esc(g.week)}</td><td class="wrap">${esc(g.topic)}</td><td>${esc(g.slo_id)}</td><td class="wrap">${esc(g.slo_text)}</td><td>${esc(g.domain)}</td><td class="${g.clo_id ? "" : "no-clo-text"}">${esc(g.clo_id || NO_CLO)}</td><td class="num">${g.target_kpi}</td></tr>`).join("")}</tbody></table>
         ${s.mode === "replace" && saved.length ? `<p class="warn-text">The ${saved.length} SLO(s) saved for this course will be DELETED and replaced by the imported ones.</p>
           <label class="tick"><input type="checkbox" id="s-okrep" ${s.okReplace ? "checked" : ""}> Yes, replace the saved SLOs</label>` : ""}
         <div class="row-btns end"><button class="btn primary" id="s-go">Import ${good.length} SLO(s)</button></div>` : ""}`;
@@ -306,10 +309,11 @@
   function setMap(s) {
     const cols = s.tables[s.pick].columns;
     // the first word is the best hint: "statement" must win over "slo", which also matches "SLO ID"
-    s.text = guess(cols, ["statement", "outcome", "text", "description", "slo"], ["id", "code", "no.", "clo", "kpi", "domain", "lecture", "topic"]);
+    s.week = guess(cols, ["date / week", "date/week", "week", "date", "session"]);
+    s.text = guess(cols, ["statement", "outcome", "text", "description", "slo"], ["id", "code", "no.", "clo", "kpi", "domain", "lecture", "topic", "week", "date"]);
     s.topic = guess(cols, ["lecture", "topic", "module"]);
     s.dom = guess(cols, ["domain"]);
-    s.id = guess(cols, ["slo id", "id", "code", "number", "no."], ["clo", "statement"]);
+    s.id = guess(cols, ["slo id", "id", "code", "number", "no."], ["clo", "statement", "week", "date"]);
     s.clo = guess(cols, ["linked clo", "clo"]);
     s.kpi = guess(cols, ["kpi", "target"]);
   }

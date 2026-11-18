@@ -320,7 +320,7 @@
       .forEach(([id, dm, t, p]) => S.t("clos").push({ course_code: k, clo_id: id, clo_text: t, domain: dm, plo_1: p, plo_2: "", plo_3: "", target_pct: 70, kpi_threshold: 60 }));
     [["Lecture 1", "SLO1", "List the types of study design.", "K", "CLO1"], ["Lecture 1", "SLO2", "Explain bias and confounding.", "K", "CLO1"], ["Lecture 2", "SLO3", "Use a checklist to appraise a trial.", "S:Cog.", "CLO2"],
       ["Lecture 3", "SLO4", "Run a chi-square test in software.", "S:IT-N", "CLO3"], ["Lecture 4", "SLO5", "Write an informed consent form.", "V", "CLO4"], ["Lecture 4", "SLO6", "Discuss ethics approval steps.", "V", ""]]
-      .forEach(([tp, id, t, dm, cl]) => S.t("slos").push({ course_code: k, topic: tp, slo_id: id, slo_text: t, domain: dm, clo_id: cl, assessment_methods: "", target_kpi: 70 }));
+      .forEach(([tp, id, t, dm, cl]) => S.t("slos").push({ course_code: k, week: "Week " + tp.slice(-1), topic: tp, slo_id: id, slo_text: t, domain: dm, clo_id: cl, assessment_methods: "", target_kpi: 70 }));
     S.save(); T.toast("Sample course DPHE 858 added."); openCourse(k);
   }
 

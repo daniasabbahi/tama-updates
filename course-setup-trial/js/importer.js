@@ -94,8 +94,8 @@
       ? [["CLO ID", "CLO statement", "Domain", "Aligned PLOs"], ["1.1", "Describe ...", "K", "K1"], ["1.2", "Explain ...", "K", "K1, K2"], ["2.1", "Perform ...", "S", "S1"], ["3.1", "Demonstrate professional ...", "V", "V1"]]
       : [["CLO ID", "CLO statement", "Domain", "Aligned PLOs"], ["CLO1", "Describe ...", "K", "K1"], ["CLO2", "Perform ...", "S", "S1, S2"], ["CLO3", "Demonstrate professional ...", "V", "V1"]];
     const ids = (cloIds || []).filter((x) => T.s(x).trim()).length ? cloIds : clos.slice(1).map((r) => r[0]);
-    const slos = [["SLO ID", "Lecture / topic", "SLO statement", "Domain", "Linked CLO", "Target KPI"],
-      ["SLO1", "Lecture 1", "Describe ...", "K", ids[0], 70], ["SLO2", "Lecture 1", "Apply ...", "S:Cog.", ids[Math.min(1, ids.length - 1)], 70], ["SLO3", "Lecture 2", "Show ...", "V", ids[ids.length - 1], 70]];
+    const slos = [["Date / Week", "SLO ID", "Lecture / topic", "SLO statement", "Domain", "Linked CLO", "Target KPI"],
+      ["Week 1", "SLO1", "Lecture 1", "Describe ...", "K", ids[0], 70], ["Week 1", "SLO2", "Lecture 1", "Apply ...", "S:Cog.", ids[Math.min(1, ids.length - 1)], 70], ["Week 2", "SLO3", "Lecture 2", "Show ...", "V", ids[ids.length - 1], 70]];
     const wb = XLSX.utils.book_new();
     [["CLOs", clos], ["SLOs", slos]].forEach(([name, aoa]) => {
       const ws = XLSX.utils.aoa_to_sheet(aoa);
