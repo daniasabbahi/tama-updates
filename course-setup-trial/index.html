@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TAMA Course setup</title>
+<title>TAMA</title>
 <meta name="description" content="Trial rebuild of TAMA's Course setup page as a standalone website.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,8 +18,8 @@
   </div>
   <nav class="nav" aria-label="Pages">
     <a class="off" title="Not part of this trial">Overview</a>
-    <a class="on" aria-current="page">Course setup</a>
-    <a class="off" title="Not part of this trial">Lectures &amp; SLOs</a>
+    <a href="#course-setup" data-page="course-setup">Course setup</a>
+    <a href="#lectures-slos" data-page="lectures-slos">Lectures &amp; SLOs</a>
     <a class="off" title="Not part of this trial">Assessment plan</a>
     <a class="off" title="Not part of this trial">Exam blueprint</a>
     <a class="off" title="Not part of this trial">Exam results</a>
@@ -31,14 +31,14 @@
     <a class="off" title="Not part of this trial">Export reports</a>
     <a class="off" title="Not part of this trial">Settings</a>
   </nav>
-  <div class="side-foot">Trial: only Course setup is built.<br>Data stays on this computer.</div>
+  <div class="side-foot">Trial: Course setup and Lectures &amp; SLOs are built.<br>Data stays on this computer.</div>
 </aside>
 <div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
 
 <div class="main">
   <header class="top">
     <button class="menu-btn" id="menu-btn" aria-label="Menu">☰</button>
-    <div class="crumbs"><span>TAMA</span><span class="sep">/</span><b>Course setup</b><span class="sep" id="crumb-sep">/</span><span id="crumb-course"></span></div>
+    <div class="crumbs"><span>TAMA</span><span class="sep">/</span><b id="crumb-page">Course setup</b><span class="sep" id="crumb-sep">/</span><span id="crumb-course"></span></div>
     <div class="top-right">
       <span class="trial-tag">Trial</span>
       <span class="save-state" id="save-state"></span>
@@ -48,13 +48,11 @@
 
   <div class="page">
     <div class="page-head">
-      <h1>Course setup</h1>
-      <p>Add a course, fill in its details, then its PLOs and CLOs. Everything saves itself as you type.</p>
+      <h1 id="page-title">Course setup</h1>
+      <p id="page-sub"></p>
     </div>
     <section class="card picker" id="picker"></section>
-    <nav class="jump" id="jump" hidden>
-      <a href="#" data-to="h-details">Course details</a><a href="#" data-to="h-plos">PLOs</a><a href="#" data-to="h-clos">CLOs</a><a href="#" data-to="sec-add">Add CLOs</a><a href="#" data-to="h-slos">CLOs and their SLOs</a>
-    </nav>
+    <nav class="jump" id="jump" hidden></nav>
     <div id="content"></div>
   </div>
 </div>
@@ -66,6 +64,13 @@
   </div>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<button class="help-btn" id="help-btn" title="Not sure how to do something? Get the steps for this page and answers to common questions."><span class="dot"></span>Ask the assistant</button>
+<div class="panel-wrap" id="help-wrap" hidden>
+  <div class="panel help-panel" role="dialog" aria-label="Ask the assistant">
+    <div class="panel-head"><h3>Ask the assistant</h3><button class="icon-btn" id="help-close" aria-label="Close">×</button></div>
+    <div id="help-body"></div>
+  </div>
+</div>
 
 <script src="js/util.js"></script>
 <script src="js/store.js"></script>
@@ -77,5 +82,8 @@
 <script src="js/clos.js"></script>
 <script src="js/cloimport.js"></script>
 <script src="js/slos.js"></script>
+<script src="js/slopage.js"></script>
+<script src="js/helpdata.js"></script>
+<script src="js/ai.js"></script>
 </body>
 </html>

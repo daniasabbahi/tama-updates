@@ -64,21 +64,39 @@
   /* ---------------------------------------------------------------- course picker */
   T.current = () => S.ui.current || null;
   const codes = () => S.t("courses").map((r) => String(r.course_code));
+  /* ---------------------------------------------------------------- pages (the link's #name picks the page) */
+  const PAGES = {
+    "course-setup": { name: "Course setup", sub: "Add a course, fill in its details, then its PLOs and CLOs. Everything saves itself as you type.",
+      jump: [["h-details", "Course details"], ["h-plos", "PLOs"], ["h-clos", "CLOs"], ["sec-add", "Add CLOs"], ["h-slos", "CLOs and their SLOs"]] },
+    "lectures-slos": { name: "Lectures & SLOs", sub: "The SLOs of each lecture or module, each linked to one CLO. Everything saves itself as you type.",
+      jump: [["h-slotbl", "SLO table"], ["sec-sloadd", "Add SLOs"], ["h-topics", "Topics not covered"]] },
+  };
+  T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
+  function renderShell() {
+    const pg = PAGES[T.page()];
+    document.title = `TAMA ${pg.name}`;
+    $("#page-title").textContent = pg.name; $("#page-sub").textContent = pg.sub; $("#crumb-page").textContent = pg.name;
+    $$(".nav a[data-page]").forEach((a) => { const on = a.dataset.page === T.page(); a.classList.toggle("on", on); a.toggleAttribute("aria-current", on); });
+    $("#jump").innerHTML = pg.jump.map(([id, l]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join("");
+    $$("#jump a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); const t = document.getElementById(a.dataset.to); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }));
+  }
+
   function renderPicker() {
-    const cur = T.current();
+    const setup = T.page() === "course-setup";
+    const cur = T.current() === NEW && !setup ? null : T.current();
     const opts = codes().map((c) => `<option value="${esc(c)}" ${c === cur ? "selected" : ""}>${esc(S.courseLabel(c, true))}</option>`).join("");
     $("#picker").innerHTML = `
       <label class="picker-lbl" for="course-pick">Course</label>
       <div class="picker-row">
         <select id="course-pick" class="${cur ? "chosen" : ""}">
-          <option value="" ${cur ? "" : "selected"} disabled>Choose a course, or add a new one</option>
+          <option value="" ${cur ? "" : "selected"} disabled>${setup ? "Choose a course, or add a new one" : "Choose a course"}</option>
           ${opts}
-          <option value="${NEW}" ${cur === NEW ? "selected" : ""}>+ Add new course</option>
+          ${setup ? `<option value="${NEW}" ${cur === NEW ? "selected" : ""}>+ Add new course</option>` : ""}
         </select>
-        <button class="btn primary" id="btn-new">+ New course</button>
+        ${setup ? '<button class="btn primary" id="btn-new">+ New course</button>' : ""}
       </div>`;
     $("#course-pick").onchange = (e) => openCourse(e.target.value);
-    $("#btn-new").onclick = () => openCourse(NEW);
+    const bn = $("#btn-new"); if (bn) bn.onclick = () => openCourse(NEW);
   }
   function openCourse(k) {
     S.ui.current = k || null; S.saveUi();
@@ -88,13 +106,16 @@
   T.openCourse = openCourse;
 
   function renderAll() {
+    renderShell();
     renderPicker();
     const cur = T.current();
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW ? "New course" : "");
+    const slo = T.page() === "lectures-slos";
+    $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW);
+    if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>
         <h3>${codes().length ? "Choose the course you want to work on" : "No courses yet"}</h3>
@@ -311,7 +332,7 @@
     $("#data-close").onclick = closePanel;
     $("#data-panel").addEventListener("click", (e) => { if (e.target.id === "data-panel") closePanel(); });
     $("#menu-btn").onclick = () => document.body.classList.toggle("nav-open");
-    $$("#jump a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); const t = document.getElementById(a.dataset.to); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }));
+    window.addEventListener("hashchange", () => { document.body.classList.remove("nav-open"); renderAll(); window.scrollTo({ top: 0 }); });
     renderAll();
     S.mark(codes().length ? "All changes saved" : "Nothing to save yet");
     window.addEventListener("beforeunload", () => S.save());
