@@ -42,16 +42,18 @@
   /** The question types ticked for one exam: {outcome id: Set of types}. Only outcomes ticked for this exam in the
       Assessment plan can have types (Dania 2026-11-19): a type saved earlier for an outcome that is no longer ticked there is ignored. */
   function typesOf(sel, exam, basis) {
-    const all = obj("bp_types")[key(sel, exam, basis)] || {}, rows = P().planRows(sel, basis);
+    const raw = obj("bp_raw")[key(sel, exam, basis)] || {}, rows = P().planRows(sel, basis);
     const ok = new Set(rows.filter((r) => P().ticked(r, exam)).map((r) => r.id));
-    return (id) => new Set(ok.has(id) ? (all[id] || []).filter((t) => TYPES.includes(t)) : []);
+    return (id) => new Set(ok.has(id) ? TYPES.filter((t) => (num((raw[id] || {})[t]) || 0) > 0) : []);
   }
   T.bpTypesOf = (sel, exam, basis) => typesOf(sel, exam, basis);
-  function setType(sel, exam, basis, id, t, on) {
-    const k = key(sel, exam, basis), all = obj("bp_types"), m = (all[k] = all[k] || {});
-    const cur = new Set(m[id] || []); if (on) cur.add(t); else cur.delete(t);
-    const list = TYPES.filter((x) => cur.has(x)); if (list.length) m[id] = list; else delete m[id];
-    if (!Object.keys(m).length) delete all[k];
+  function setWeight(sel, exam, basis, id, t, v) {
+    const k = key(sel, exam, basis), all = obj("bp_raw"), m = (all[k] = all[k] || {});
+    m[id] = m[id] || {}; TYPES.forEach((tt) => { if (!(tt in m[id])) m[id][tt] = null; });
+    m[id][t] = v;
+    const bt = obj("bp_types"), tm = (bt[k] = bt[k] || {}), list = TYPES.filter((tt) => (num(m[id][tt]) || 0) > 0);
+    if (list.length) tm[id] = list; else delete tm[id];
+    if (!Object.keys(tm).length) delete bt[k];
     S.save();
   }
 
@@ -66,22 +68,35 @@
     else {
       const info = basis === "SLOs" ? [["week", "Date / Week", 62], ["lecture", "Lecture / module", 110], ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64], ["clo", "Linked CLO", 62]]
         : [["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64]];
-      const TW = 96, tp = typesOf(sel, exam, basis), nPlan = rows.filter((r) => P().ticked(r, exam)).length;
-      body = `<p class="note">Tick the question types <b>${esc(exam)}</b> uses for each outcome: <b>MCQ</b>, <b>Short essay</b> or <b>Long essay</b>.
-          Only the outcomes ticked for ${esc(exam)} in the Assessment plan (shaded) can be ticked here; the others are locked. Each tick saves itself and is used in "How many questions?" below.</p>
+      const raw = obj("bp_raw")[key(sel, exam, basis)] || {}, nPlan = rows.filter((r) => P().ticked(r, exam)).length;
+      const wOf = (id, t) => { const v = num((raw[id] || {})[t]); return v === null ? null : Math.min(Math.max(v, 0), 3); };
+      const over = [];
+      const trs = rows.map((r, i) => {
+        const inPlan = P().ticked(r, exam), tot = TYPES.reduce((a, t) => a + (wOf(r.id, t) || 0), 0), bad = inPlan && tot > 3;
+        if (bad) over.push(`${r.id} (${g2(tot)})`);
+        return `<tr class="${inPlan ? "" : "locked"} ${bad ? "over" : ""}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro words ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
+          ${TYPES.map((t, ti) => { const v = wOf(r.id, t); return inPlan ? `<td class="ctr bx g0 inplan ${ti === 0 ? "first" : ""}"><input type="text" inputmode="numeric" class="wcell" data-wb="${i}" data-wt="${ti}" data-ref="bw:${esc(r.id)}:${ti}" value="${v === null ? "" : esc(g2(v))}" aria-label="${esc(r.id)}: ${esc(exam)} ${t} weight" title="${esc(exam)}: ${t} weight (0 to 3)"></td>`
+            : `<td class="ctr bx g0 off ${ti === 0 ? "first" : ""}"><span class="lock" title="Not planned for ${esc(exam)} in the Assessment plan">—</span></td>`; }).join("")}
+          <td class="ctr b wtot ${inPlan ? (bad ? "bad" : "") : "off"}">${inPlan ? g2(tot) + (bad ? " ⚠" : "") : ""}</td></tr>`;
+      }).join("");
+      body = `<div class="def-box bp-how"><b>How to fill this table</b><ul>
+          <li>Only the ${basis} ticked for <b>${esc(exam)}</b> in the Assessment plan (shaded) have boxes. The others are locked (—).</li>
+          <li>In each box write how important this outcome is for that type of question: <b>3</b> = most important, <b>2</b> = moderate, <b>1</b> = least important. Leave it <b>empty</b> (or 0) if this type is not used for the outcome.</li>
+          <li>An outcome can be assessed by MCQ and essays together, but its weights must add up to <b>3 at most</b> (see <b>Total</b>). A total above 3 turns orange and the blueprint is not calculated until it is fixed.</li>
+          <li>Each weighted outcome gets at least one question of that type; the number of questions is shown in "How many questions?" below. Every weight saves itself.</li></ul></div>
         ${nPlan ? "" : `<p class="warn-text">No ${basis} is ticked for ${esc(exam)} in the Assessment plan yet, so every box is locked. Tick the outcomes this test assesses in the <a href="#assessment-plan">Assessment plan</a> first.</p>`}
-        <div class="bp-wrap"><table class="tbl bp-tbl one"><colgroup><col style="width:26px">${info.map(([k, , w]) => `<col data-k="${k}"${w ? ` style="width:${w}px"` : ""}>`).join("")}${TYPES.map(() => `<col style="width:${TW}px">`).join("")}</colgroup>
-        <thead><tr><th rowspan="2">#</th>${info.map(([, l]) => `<th rowspan="2" class="words">${l}</th>`).join("")}<th colspan="3" class="bx-h g0" title="${esc(exam)}">${esc(exam)}</th></tr>
+        <div class="bp-wrap"><table class="tbl bp-tbl one"><colgroup><col style="width:26px">${info.map(([k, , w]) => `<col data-k="${k}"${w ? ` style="width:${w}px"` : ""}>`).join("")}${TYPES.map(() => `<col style="width:96px">`).join("")}<col style="width:90px"></colgroup>
+        <thead><tr><th rowspan="2">#</th>${info.map(([, l]) => `<th rowspan="2" class="words">${l}</th>`).join("")}<th colspan="3" class="bx-h g0" title="${esc(exam)}">${esc(exam)}: weight (0 to 3)</th><th rowspan="2" class="ctr wtot-h">Total weight<br>(max 3)</th></tr>
           <tr>${TYPES.map((t) => `<th class="bx-t g0">${t === "MCQ" ? "MCQ" : t.replace(" Essay", " essay")}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map((r, i) => { const inPlan = P().ticked(r, exam), on = tp(r.id);
-          return `<tr class="${inPlan ? "" : "locked"}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro words ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
-          ${TYPES.map((t, ti) => `<td class="ctr bx g0 ${inPlan ? "inplan" : "off"} ${ti === 0 ? "first" : ""}"><input type="checkbox" data-bt="${ti}" data-bi="${i}" data-ref="bx:${i}:${ti}" ${on.has(t) ? "checked" : ""} ${inPlan ? "" : "disabled"} aria-label="${esc(r.id)}: ${esc(exam)} ${t}" title="${inPlan ? `${esc(exam)}: ${t}` : `Not planned for ${esc(exam)} in the Assessment plan`}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
-        <div class="bx-key"><span><i class="inplan"></i>Ticked for ${esc(exam)} in the Assessment plan</span><span><i class="off"></i>Not planned for this test (locked)</span></div>`;
+        <tbody>${trs}</tbody></table></div>
+        ${over.length ? `<p class="warn-text">The total weight of an outcome cannot be more than 3: ${esc(over.join(", "))}. Lower its MCQ, Short essay or Long essay weight so the total is 3 or less.</p>` : ""}`;
     }
-    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types${exam && ex.includes(exam) ? ` of ${esc(exam)}` : ""}</h2><p class="sub">Copied from the plan to measure learning outcomes, for the test chosen in Test blueprint above.</p></div></div>${body}`;
-    $$("[data-bt]", el).forEach((c) => c.onchange = () => {
-      const r = rows[+c.dataset.bi], t = TYPES[+c.dataset.bt];
-      setType(sel, exam, basis, r.id, t, c.checked); T.refresh("bpPlan", "bpTab");
+    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types and weights${exam && ex.includes(exam) ? ` of ${esc(exam)}` : ""}</h2><p class="sub">Copied from the plan to measure learning outcomes, for the test chosen in Test blueprint above.</p></div></div>${body}`;
+    $$("[data-wb]", el).forEach((i) => i.onchange = () => {
+      const r = rows[+i.dataset.wb], t = TYPES[+i.dataset.wt], v = num(i.value);
+      const w = v === null ? null : Math.round(Math.min(Math.max(v, 0), 3));
+      if (v !== null && (v < 0 || v > 3 || w !== v)) T.toast("A weight is a whole number from 0 to 3. It was set to " + w + ".");
+      setWeight(sel, exam, basis, r.id, t, w); T.refresh("bpPlan", "bpTab");
     });
   };
 
@@ -255,26 +270,18 @@
   function builder(sel, exam) {
     const R = compute(sel, exam), { basis, rows, wr, ms, need, over, calc, actual } = R;
     if (!rows.length) return `<div class="info-box"><span>This course has no ${basis} yet.</span></div>`;
-    if (!wr.length) return `${live(R)}<p class="warn-text">None of the ${basis} has MCQ, SE or LE ticked for <b>${esc(exam)}</b> in the table at the top of this page, so there is nothing to put in this written exam yet.</p>`;
+    if (!wr.length) return `${live(R)}<p class="warn-text">None of the ${basis} has a weight for <b>${esc(exam)}</b> in the table above yet, so there is nothing to put in this written exam yet.</p>`;
     const info = [...(basis === "SLOs" ? [["lecture", "Lecture / module", 96]] : []), ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64]];
-    const wHtml = `<h4>Importance weights</h4>
-      <p class="note">3 = most important, 2 = moderate, 1 = least important, 0 = not in this exam. Each outcome's weights for MCQ, Short Essay and Long Essay must add up to <b>3 at most</b>. A weight can only be entered where the type is ticked for this exam in the table at the top of the page (grey boxes are locked).</p>
-      <div class="bp-wrap"><table class="tbl bp-w" style="min-width:${info.reduce((a, x) => a + x[2], 0) + 240 + 26 + 3 * 120 + 60}px"><colgroup><col style="width:26px">${info.map(([, , w]) => `<col${w ? ` style="width:${w}px"` : ""}>`).join("")}${TYPES.map(() => `<col style="width:62px"><col style="width:58px">`).join("")}<col style="width:60px"></colgroup>
-      <thead><tr><th>#</th>${info.map(([, l]) => `<th class="words">${l}</th>`).join("")}${TYPES.map((t) => `<th class="ctr" style="background:${PAL[t][0]};color:${PAL[t][1]}">${SHORT[t]}<br>planned</th><th class="ctr" style="background:${PAL[t][2]};color:${PAL[t][3]}">${SHORT[t]}<br>weight</th>`).join("")}<th class="ctr">Total (max 3)</th></tr></thead>
-      <tbody>${wr.map((r, i) => { const bad = r.total > 3; return `<tr class="${bad ? "over" : ""}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro words ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""}">${esc(r[k])}</td>`).join("")}
-        ${TYPES.map((t) => `<td class="ctr" style="background:${PAL[t][0]};color:${PAL[t][1]}">${r.has[t] ? "✓" : ""}</td><td class="ctr" style="background:${r.has[t] ? (bad ? "#fde7c2" : PAL[t][2]) : "#eceff3"}">${r.has[t] ? `<input type="text" inputmode="numeric" class="wcell" data-wi="${i}" data-wt="${t}" data-ref="w:${esc(r.id)}:${t}" value="${r.w[t] === null ? "" : esc(g2(r.w[t]))}" aria-label="${esc(r.id)} ${t} weight">` : `<span class="lock" title="Tick ${t} for ${esc(exam)} in the table at the top of the page to enter a weight">—</span>`}</td>`).join("")}
-        <td class="ctr b tot ${bad ? "bad" : ""}">${g2(r.total)}</td></tr>`; }).join("")}</tbody></table></div>
-      <p class="note">The totals, the colours, the flags and the blueprint update as soon as you enter a weight.</p>`;
     let msgs = "";
     if (need.length) msgs += `<p class="warn-text">The minutes needed to answer one question were not completed for: ${esc(need.join("; "))}. The questions of these types cannot be counted until the minutes are entered (in "Minutes needed to answer one question" in Test blueprint above).</p>`;
     const miss = []; TYPES.forEach((t) => wr.forEach((r) => { if (r.eff[t] > 0 && r.min[t] === null) miss.push(`${r.id} (${t}, domain ${r.domain})`); }));
     if (miss.length) msgs += `<p class="warn-text">These question types are NOT counted yet because the minutes per question are empty for their domain: ${esc(miss.join("; "))}.</p>`;
     let res = "";
-    if (over.length) res = `<p class="warn-text">The total importance weight of an outcome cannot be more than 3. Your numbers are kept and shown in orange; lower the MCQ, Short Essay or Long Essay weights of: ${esc(over.join(", "))}. The blueprint cannot be calculated or saved until every total is 3 or less.</p>`;
+    if (over.length) res = `<p class="warn-text">The total importance weight of an outcome cannot be more than 3. Your numbers are kept and shown in orange in the table above; lower the MCQ, Short essay or Long essay weights of: ${esc(over.join(", "))}. The blueprint cannot be calculated or saved until every total is 3 or less.</p>`;
     else if (actual <= 0) res = `<p class="warn-text">Enter an exam duration that is greater than the revision time in Test blueprint above.</p>`;
-    else if (R.totalW === 0) res = `<div class="info-box"><span>Enter the importance weights (0 to 3) for the planned question types above to see how many questions are needed. The blueprint plan saves itself once the numbers can be calculated.</span></div>`;
+    else if (R.totalW === 0) res = `<div class="info-box"><span>Enter the weights (0 to 3) in the table above to see how many questions are needed. The blueprint plan saves itself once the numbers can be calculated.</span></div>`;
     else res = results(sel, exam, R);
-    return `${live(R)}${msgs}${overview(R, exam)}${wHtml}${res}`;
+    return `${live(R)}${msgs}${overview(R, exam)}${res}`;
   }
 
   function live(R) {
@@ -296,7 +303,7 @@
       <table class="tbl sum-tbl bp-ov"><colgroup><col><col style="width:24%"><col style="width:28%"></colgroup><thead><tr><th>Question type</th><th class="num">${unit} planned</th><th class="num">${unit} covered in this exam</th></tr></thead>
       <tbody>${rows.map(([t, p, c]) => `<tr><td>${t}</td><td class="num">${p}</td><td class="num cov">${c}</td></tr>`).join("")}
       <tr class="total"><td>Included in this exam (any type)</td><td class="num">${R.wr.length}</td><td class="num cov">${incl}</td></tr></tbody></table>
-      <p class="note">Planned = ticked for ${esc(exam)} in the table at the top of the page. Covered = with a weight above 0 for that type.</p>`;
+      <p class="note">Planned and covered = with a weight above 0 for that type in the table above.</p>`;
   }
 
   function results(sel, exam, R) {
@@ -329,15 +336,6 @@
 
   function wireBuilder(sel, exam, el) {
     const basis = basisOf(), k = key(sel, exam, basis);
-    $$("[data-wi]", el).forEach((i) => i.onchange = () => {
-      const R = compute(sel, exam), r = R.wr[+i.dataset.wi], t = i.dataset.wt; if (!r) return;
-      const all = obj("bp_raw"), m = (all[k] = all[k] || {});
-      // keep every outcome of the written exam in the saved weights, as TAMA does
-      R.wr.forEach((x) => { m[x.id] = m[x.id] || {}; TYPES.forEach((tt) => { if (!(tt in m[x.id])) m[x.id][tt] = null; }); });
-      const v = num(i.value); m[r.id][t] = v === null ? null : Math.round(Math.min(Math.max(v, 0), 3));
-      if (v !== null && (v < 0 || v > 3)) T.toast("A weight is 0 to 3. It was set to " + m[r.id][t] + ".");
-      S.save(); T.refresh("bpTab");
-    });
     const csv = $("#bp-csv", el);
     if (csv) csv.onclick = () => {
       const R = compute(sel, exam), basis2 = R.basis, q = (v) => `"${T.s(v).replace(/"/g, '""')}"`;

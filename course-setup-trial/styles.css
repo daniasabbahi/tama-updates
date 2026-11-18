@@ -480,3 +480,9 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .bp-mh { margin-top: 18px; }
 .bp-min .cell.need { border-color: #d9a441; background: #fff7e6; }
 .bp-min td.fixed-min { font-weight: 600; color: var(--navy); padding-left: 14px; }
+/* Blueprint: weights in the first table (Dania 2026-11-19) */
+.bp-how ul { margin: 6px 0 0 18px; padding: 0; line-height: 1.6; }
+.bp-tbl .wcell { width: 46px; text-align: center; border: 1.5px solid rgba(0,0,0,.15); border-radius: 6px; padding: 5px 2px; background: #fff; font-weight: 600; font: inherit; font-weight: 600; }
+.bp-tbl .lock { color: #9aa0a6; }
+.bp-tbl td.wtot { background: #d5dde8; color: var(--navy); vertical-align: middle; } .bp-tbl td.wtot.bad { background: #fde7c2; color: var(--warn); } .bp-tbl td.wtot.off { background: #eceff3; }
+.bp-tbl tr.over td.bx.inplan { background: #f6dcc0; }
