@@ -524,6 +524,10 @@
           <tfoot>${[["Performance-based assessment", "performance-based"], ["Test-based assessment", "test-based"]].map(([k, w]) => `<tr class="total-row"><td colspan="2" data-l="">${basis} assessed by ${w} assessment</td><td data-l="${basis} assessed" class="num">${byKind(k)} of ${nOut}</td></tr>`).join("")}</tfoot></table>
           <p class="note">The type of each method is filled in from its name: MCQ and essays are test-based; presentations, simulation, portfolio, OSPE, OSCE, Mini-CEX, DOPS, case-based and workplace assessments are performance-based; surveys and feedback are indirect; anything else is 'Others'. If a type is wrong, choose another one. It saves itself.</p></div>
       </div>
+      <h4>How many ${basis} each assessment covers</h4>
+      <div class="bar-chart">${ms.map((m) => { const c = cov([m]), k = kindOf(sel, m), pc = nOut ? Math.round(c / nOut * 100) : 0;
+        return `<div class="bc-row"><div class="bc-name" title="${esc(m)}">${esc(m)}</div><div class="bc-track"><i class="${k.startsWith("Test") ? "t" : k.startsWith("Perf") ? "p" : "o"}" style="width:${pc}%"></i></div><div class="bc-num">${c} <small>of ${nOut} (${pc}%)</small></div></div>`; }).join("")}
+        <div class="bc-key"><span><i class="p"></i>Performance-based</span><span><i class="t"></i>Test-based</span>${ms.some((m) => !/^(Test|Perf)/.test(kindOf(sel, m))) ? `<span><i class="o"></i>Other types</span>` : ""}</div></div>
       <h4>Questions linked to the ${basis}</h4>
       ${qHtml}${sloClo}${cloTypes}`;
 
