@@ -170,20 +170,17 @@
   };
 
   /* ================================================================ 3. tabs: how many questions / question mapping / downloads */
-  const TABS = [["build", "1. How many questions?"], ["map", "2. Exam builder"]];   // downloads are now under Exam builder > Reports
+  // "How many questions?" and "Exam builder" are two separate sections (Dania 2026-11-19); both are drawn by bpTab so every refresh("bpTab") updates them
   T.sections.bpTab = function () {
-    const sel = T.current(), el = $("#sec-bptab"); if (!el) return;
-    if (S.ui.bpTab === "dl") { S.ui.bpTab = "map"; S.ui.ebTab = "reports"; }
-    const tab = TABS.some(([k]) => k === S.ui.bpTab) ? S.ui.bpTab : "build";
-    const exam = examOf(sel);
-    let body;
-    if (!exam || exam === NEW) body = `<div class="info-box"><span>Choose an assessment in <b>Test blueprint</b> above first.</span></div>`;
-    else if (tab === "build") body = builder(sel, exam);
-    else if (tab === "map") body = T.bpMapTab(sel, exam);
-    el.innerHTML = `<div class="tabs" id="h-bptab">${TABS.map(([k, l]) => `<button class="${k === tab ? "on" : ""}" data-bptab="${k}">${l}</button>`).join("")}</div>${body}`;
-    $$("[data-bptab]", el).forEach((b) => b.onclick = () => { S.ui.bpTab = b.dataset.bptab; S.saveUi(); T.refresh("bpTab"); });
-    if (tab === "build" && exam && exam !== NEW) wireBuilder(sel, exam, el);
-    if (tab === "map" && exam && exam !== NEW) T.bpMapWire(sel, exam, el);
+    const sel = T.current(), el = $("#sec-bptab"), eb = $("#sec-bpeb"); if (!el) return;
+    if (S.ui.bpTab === "dl") { S.ui.ebTab = "reports"; S.ui.bpTab = ""; }
+    const exam = examOf(sel), ready = exam && exam !== NEW;
+    const none = `<div class="info-box"><span>Choose the test in <b>Test blueprint</b> above first.</span></div>`;
+    el.innerHTML = `<div class="sec-head" id="h-bptab"><div><h2>How many questions?</h2><p class="sub">The number of MCQ, short essay and long essay questions for each ${basisOf()} of ${ready ? esc(exam) : "the test"}, from the weights and the exam time (the same rules as TAMA).</p></div></div>${ready ? builder(sel, exam) : none}`;
+    if (ready) wireBuilder(sel, exam, el);
+    if (!eb) return;
+    eb.innerHTML = `<div class="sec-head" id="h-bpeb"><div><h2>Exam builder</h2><p class="sub">Add the questions of ${ready ? esc(exam) : "the test"} and link each one to an SLO or CLO. They are kept in the question bank; print the exam and download the reports here.</p></div></div>${ready ? T.bpMapTab(sel, exam) : none}`;
+    if (ready) T.bpMapWire(sel, exam, eb);
   };
 
   /* ---------------------------------------------------------------- the blueprint builder (TAMA's calculation, unchanged) */
@@ -360,7 +357,7 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-bpexam"></section><section class="card" id="sec-bpplan"></section><section class="card" id="sec-bptab"></section>`;
+    content.innerHTML = `<section class="card" id="sec-bpexam"></section><section class="card" id="sec-bpplan"></section><section class="card" id="sec-bptab"></section><section class="card" id="sec-bpeb"></section>`;
     T.refresh("bpExam", "bpPlan", "bpTab");
   };
 })();
