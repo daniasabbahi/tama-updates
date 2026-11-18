@@ -80,7 +80,7 @@
           <td class="ctr b wtot ${inPlan ? (bad ? "bad" : "") : "off"}">${inPlan ? g2(tot) + (bad ? " ⚠" : "") : ""}</td></tr>`;
       }).join("");
       body = `<div class="def-box bp-how"><b>How to fill this table</b><ul>
-          <li>Only the ${basis} ticked for <b>${esc(exam)}</b> in the Assessment plan (shaded) have boxes. The others are locked (—).</li>
+          <li>Only the ${basis} ticked for <b>${esc(exam)}</b> in the Assessment plan (shaded) have boxes. The others are locked (—). To include another ${basis === "SLOs" ? "SLO" : "CLO"} in this test, tick it for ${esc(exam)} in the <a href="#assessment-plan">Assessment plan</a> page first; its boxes then open here.</li>
           <li>In each box write how important this outcome is for that type of question: <b>3</b> = most important, <b>2</b> = moderate, <b>1</b> = least important. Leave it <b>empty</b> (or 0) if this type is not used for the outcome.</li>
           <li>An outcome can be assessed by MCQ and essays together, but its weights must add up to <b>3 at most</b> (see <b>Total</b>). A total above 3 turns orange and the blueprint is not calculated until it is fixed.</li>
           <li>Each weighted outcome gets at least one question of that type; the number of questions is shown in "How many questions?" below. Every weight saves itself.</li></ul></div>
