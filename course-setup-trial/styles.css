@@ -367,10 +367,10 @@ body.panel-open .help-btn { display: none; }
 @media (max-width: 760px) { .sum-tbl.clo-types { min-width: 0 !important; } .ct-wrap.scroll { overflow-x: visible; } .sum-tbl.clo-types td.c { text-align: left; } }
 /* Assessment plan on medium windows: the side menu folds away (☰) so the wide plan tables fit without dragging */
 @media (min-width: 861px) and (max-width: 1150px) {
-  body[data-page="assessment-plan"] .side { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
-  body[data-page="assessment-plan"].nav-open .side { transform: none; }
-  body[data-page="assessment-plan"].nav-open .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 25; }
-  body[data-page="assessment-plan"] .menu-btn { display: block; }
+  body[data-page="assessment-plan"] .side, body[data-page="exam-blueprint"] .side { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
+  body[data-page="assessment-plan"].nav-open .side, body[data-page="exam-blueprint"].nav-open .side { transform: none; }
+  body[data-page="assessment-plan"].nav-open .scrim, body[data-page="exam-blueprint"].nav-open .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 25; }
+  body[data-page="assessment-plan"] .menu-btn, body[data-page="exam-blueprint"] .menu-btn { display: block; }
 }
 /* Assessment plan: bar chart of how many outcomes each assessment covers */
 .bar-chart { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; background: #fff; max-width: 900px; }
@@ -412,3 +412,41 @@ body.panel-open .help-btn { display: none; }
 .clo-types .pill.l1 { background: #f3ebf1; color: #6b4562; }
 .clo-types .pill.l2 { background: #dcc6d6; color: #4f3048; }
 .clo-types .pill.l3 { background: #8a5d80; color: #fff; }
+
+/* ---------- Blueprint for written exams */
+body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
+.bp-tbl th.bx-h { text-align: center; vertical-align: bottom; font-size: 12px; line-height: 1.25; padding: 6px 4px; border-left: 2px solid #fff; }
+.bp-tbl th.bx-t { text-align: center; font-size: 11px; padding: 4px 0; }
+.bp-tbl th.g1, .bp-tbl td.g1 { background-color: #fbf8f3; }
+.bp-tbl th.bx-h.g1, .bp-tbl th.bx-t.g1 { background: #efe5d6; }
+.bp-tbl td.bx { padding: 4px 0; vertical-align: middle; }
+.bp-tbl td.bx.first, .bp-tbl th.bx-t:nth-child(3n+1) { border-left: 2px solid var(--line); }
+.bp-tbl td.bx.inplan { background: #e8d3e2; }
+.bp-tbl .words, .bp-w .words, .bp-out .words { word-break: normal; overflow-wrap: break-word; }
+.bx-key { font-size: 12px; color: var(--soft); margin-top: 4px; }
+.bx-key i { display: inline-block; width: 14px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+.bx-key i.inplan { background: #e8d3e2; border: 1px solid #dcc6d6; }
+.bp-exam { align-items: end; }
+.kcard.bp-actual { padding: 8px 14px; } .kcard.bp-actual .big { font-size: 24px; }
+.bp-live { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 4px 0 14px; background: var(--cream-soft); font-size: 13px; }
+.bp-live .big { font: 700 28px/1.1 var(--serif); color: var(--navy); }
+.bp-live .lab { color: var(--soft); font-size: 12px; font-weight: 600; }
+.bp-live .lv { flex: 1; min-width: 150px; } .bp-live .lv-h { display: flex; justify-content: space-between; }
+.bp-live .pct { font-size: 11px; color: var(--soft); }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; }
+.pill.ok { background: #d8f0e2; color: var(--ok); } .pill.warn { background: #fde7c2; color: var(--warn); }
+.bp-th { margin: 6px 0 4px; }
+.bp-min td { padding: 3px 6px; } .bp-min .cell { width: 100%; }
+.bp-w td.ctr { vertical-align: middle; padding: 3px 2px; }
+.bp-w th.ctr { text-align: center; font-size: 11px; }
+.bp-w .wcell { width: 40px; text-align: center; border: 1.5px solid rgba(0,0,0,.12); border-radius: 6px; padding: 4px 2px; background: #fff; font-weight: 600; }
+.bp-w .lock { color: #9aa0a6; }
+.bp-w td.tot { background: #d5dde8; color: var(--navy); } .bp-w td.tot.bad { background: #fde7c2; color: var(--warn); }
+.bp-ov td.cov { background: #e3f3e9; color: #1b4332; font-weight: 600; }
+.bp-ov tr.total td.cov { background: #c9e9d5; }
+.kcards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kcards.four .kcard .big { font-size: 26px; }
+.ok-line { color: var(--ok); font-size: 13px; margin: 8px 0; }
+.bp-out td.t-bad { background: #fde7c2; color: var(--warn); } .bp-out td.t-ok { background: #d8f0e2; color: var(--ok); }
+.bp-det td, .bp-det th { font-size: 12px; white-space: nowrap; }
+@media (max-width: 760px) { .kcards.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bp-exam { grid-template-columns: minmax(0, 1fr); } }
