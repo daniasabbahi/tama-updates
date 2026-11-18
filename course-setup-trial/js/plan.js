@@ -319,13 +319,19 @@
     const t = $(".plan-tbl", wrap), cols = $$("col", t), nInfo = cols.length - n;
     if (window.innerWidth <= 760) { t.style.width = ""; wrap.classList.remove("scroll"); return; }   // phones: one card per outcome
     const W = wrap.clientWidth;
-    const fixed = cols.slice(0, nInfo).map((c) => (c.dataset.k === "statement" ? null : parseFloat(c.style.width) || 0));
+    cols.forEach((c) => { if (!c.dataset.w0) c.dataset.w0 = parseFloat(c.style.width) || 0; });
+    const base = cols.slice(0, nInfo).map((c) => (c.dataset.k === "statement" ? null : +c.dataset.w0));
+    const baseSum = base.reduce((a, w) => a + (w || 0), 0), inView = Math.min(n, 10), drag = n > 10;
+    // smaller windows: narrow the other columns (down to 70%) and the tick columns (down to 30px) so 10 still fit and the outcome keeps ~180px
+    const short = Math.max(0, baseSum + inView * COL_W + 180 - (W - 2));
+    const f = short ? Math.max(0.7, 1 - short / (baseSum + inView * COL_W)) : 1;
+    const colW = Math.max(30, Math.floor(COL_W * f));
+    const fixed = base.map((w) => (w === null ? null : Math.floor(w * f)));
     const fixedSum = fixed.reduce((a, w) => a + (w || 0), 0);
-    const drag = n > 10;
-    const stmt = Math.max(140, W - 2 - fixedSum - Math.min(n, 10) * COL_W);   // the learning outcome takes all the room the 10 (or fewer) assessments leave
-    const total = fixedSum + stmt + n * COL_W;
+    const stmt = Math.max(110, W - 2 - fixedSum - inView * colW);   // the learning outcome takes all the room the 10 (or fewer) assessments leave
+    const total = fixedSum + stmt + n * colW;
     cols.slice(0, nInfo).forEach((c, k) => { c.style.width = `${fixed[k] === null ? stmt : fixed[k]}px`; });
-    cols.slice(nInfo).forEach((c) => { c.style.width = `${COL_W}px`; });
+    cols.slice(nInfo).forEach((c) => { c.style.width = `${colW}px`; });
     t.style.width = drag ? `${total}px` : "100%";
     wrap.classList.toggle("scroll", drag);
     const hint = $("#plan-hint", el); if (hint) hint.hidden = !drag;
@@ -449,6 +455,13 @@
   const smallTable = (cols, rows, cls) => `<table class="tbl sum-tbl ${cls || ""}"><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td class="wrap" data-l="${esc(c)}">${esc(r[c] === undefined ? "" : r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 
+  // CLOs x assessments: names written vertically (same as the plan table) so the table stays inside the page;
+  // up to 10 assessments always fit, more than 10 scroll sideways inside the box
+  const cloTypesTable = (ms, rr) => `<div class="ct-wrap ${ms.length > 10 ? "scroll" : ""}"><table class="tbl sum-tbl clo-types"${ms.length > 10 ? ` style="min-width:${362 + ms.length * 44}px"` : ""}>
+    <colgroup><col style="width:56px"><col style="width:66px"><col>${ms.map(() => `<col style="width:44px">`).join("")}</colgroup>
+    <thead><tr><th>CLO</th><th>Domain</th><th>CLO statement</th>${ms.map((m) => `<th class="mth" title="${esc(m)}"><span>${esc(m).replace(/\//g, "/<wbr>")}</span></th>`).join("")}</tr></thead>
+    <tbody>${rr.map((r) => `<tr><td data-l="CLO">${esc(r.CLO)}</td><td data-l="Domain">${esc(r.Domain)}</td><td class="wrap" data-l="CLO statement">${esc(r["CLO statement"])}</td>${ms.map((m) => `<td class="c" data-l="${esc(m)}">${esc(r[m] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+
   T.sections.planSum = function () {
     const sel = T.current(), el = $("#sec-plsum"); if (!el) return;
     const basis = basisOf(), rows = planRows(sel, basis), ms = methods(sel), nOut = rows.length;
@@ -498,7 +511,7 @@
         return n ? `${n} of ${my.length}` : "";
       };
       const rr = clos.map((c) => ({ CLO: c.clo_id, Domain: c.domain, "CLO statement": c.clo_text, ...Object.fromEntries(ms.map((m) => [m, cellOf(String(c.clo_id), m)])) }));
-      cloTypes = `<details class="sum-box"><summary>Summary of CLOs and assessment types</summary><p class="note">${basis === "CLOs" ? "✓ = the CLO is assessed by this type in the plan above." : "Each cell shows how many of the CLO's SLOs are assessed by that type (e.g. 2 of 3)."} An empty row means the CLO is not assessed yet.</p>${smallTable(["CLO", "Domain", "CLO statement", ...ms], rr, "clo-types")}</details>`;
+      cloTypes = `<details class="sum-box"><summary>Summary of CLOs and assessment types</summary><p class="note">${basis === "CLOs" ? "✓ = the CLO is assessed by this type in the plan above." : "Each cell shows how many of the CLO's SLOs are assessed by that type (e.g. 2 of 3)."} An empty row means the CLO is not assessed yet.</p>${cloTypesTable(ms, rr)}</details>`;
     }
 
     el.innerHTML = `<div class="sec-head" id="h-plsum"><div><h2>Summaries of the plan</h2><p class="sub">They follow the ticks above at once.</p></div>

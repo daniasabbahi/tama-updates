@@ -84,6 +84,7 @@
     const pg = PAGES[T.page()];
     document.title = `TAMA ${pg.name}`;
     $("#page-title").textContent = pg.name; $("#page-sub").textContent = pg.sub; $("#crumb-page").textContent = pg.name;
+    document.body.dataset.page = T.page();   // lets a page change the layout (the Assessment plan hides the side menu on medium windows)
     $$(".nav a[data-page]").forEach((a) => { const on = a.dataset.page === T.page(); a.classList.toggle("on", on); a.toggleAttribute("aria-current", on); });
     $("#jump").innerHTML = pg.jump.map(([id, l]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join("");
     $$("#jump a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); const t = document.getElementById(a.dataset.to); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }));

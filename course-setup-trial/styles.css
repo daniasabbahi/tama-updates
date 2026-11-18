@@ -358,3 +358,17 @@ body.panel-open .help-btn { display: none; }
 @media (max-width: 560px) { .grid.g4 { grid-template-columns: 1fr; } .crumbs > span:first-child, .crumbs > .sep:first-of-type { display: none; } }
 
 .sum-one { max-width: 760px; }
+.ct-wrap.scroll { overflow-x: auto; }
+.sum-tbl.clo-types { table-layout: fixed; width: 100%; }
+.sum-tbl.clo-types th.mth { height: 200px; vertical-align: bottom; padding: 6px 2px; text-align: center; }
+.sum-tbl.clo-types th.mth span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; max-height: 190px; text-align: left; line-height: 1.15; white-space: normal; }
+.sum-tbl.clo-types td.c { text-align: center; white-space: nowrap; padding-left: 2px; padding-right: 2px; }
+.sum-tbl.clo-types td, .sum-tbl.clo-types th { overflow-wrap: break-word; }
+@media (max-width: 760px) { .sum-tbl.clo-types { min-width: 0 !important; } .ct-wrap.scroll { overflow-x: visible; } .sum-tbl.clo-types td.c { text-align: left; } }
+/* Assessment plan on medium windows: the side menu folds away (☰) so the wide plan tables fit without dragging */
+@media (min-width: 861px) and (max-width: 1150px) {
+  body[data-page="assessment-plan"] .side { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform .2s; }
+  body[data-page="assessment-plan"].nav-open .side { transform: none; }
+  body[data-page="assessment-plan"].nav-open .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 25; }
+  body[data-page="assessment-plan"] .menu-btn { display: block; }
+}
