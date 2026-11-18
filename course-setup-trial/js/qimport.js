@@ -364,7 +364,8 @@ Leave out instructions, headers and student details. If there are no questions, 
       </details>
       <details class="sum-box" id="qi-box"><summary>Import question blueprint (a TAMA questions file)</summary>
         <p class="note">An Excel or CSV file with the columns course_code, assessment, question_id, max_marks, topic, cognitive_level and clos (as the 'Download blueprint CSV' file). <b>Importing REPLACES all the questions that are saved now</b> (for all courses and exams).</p>
-        <div class="row-btns"><label class="btn sm"><input type="file" id="qi-file" accept=".xlsx,.xls,.csv" hidden>Choose the file</label><span class="muted" id="qi-name"></span></div>
+        <div class="row-btns"><button class="btn sm" id="qi-tpl">⬇ Download the questions file to fill in (Excel)</button><label class="btn sm"><input type="file" id="qi-file" accept=".xlsx,.xls,.csv" hidden>Choose the file</label><span class="muted" id="qi-name"></span></div>
+        <p class="note">The downloaded file already holds every question saved now (all courses and exams), so nothing is lost when you import it back. If none is saved yet, it has one example row for ${esc(exam)} to copy; change or delete it. Its second sheet explains each column.</p>
         <div id="qi-confirm" hidden><label class="tick-line"><input type="checkbox" id="qi-ok"> Yes, replace the saved questions</label><div class="row-btns"><button class="btn sm" id="qi-go">Import these questions</button></div></div>
       </details>`;
   };
@@ -414,6 +415,34 @@ Leave out instructions, headers and student details. If there are no questions, 
       redraw();
     };
     const clr = $("#qx-clear", el); if (clr) clr.onclick = () => { delete found[k]; redraw(); };
+    // the TAMA questions file to fill in: all the saved questions (or one example row), plus a sheet explaining the columns
+    const tpl = $("#qi-tpl", el);
+    if (tpl) tpl.onclick = async () => {
+      try {
+        await T.importer.lib("xlsx");
+        const saved = (S.data.tables.questions || []).map((q) => Object.fromEntries(QUESTION_COLS.map((c) => [c, q[c] ?? ""])));
+        const ex = { course_code: sel, assessment: exam, question_id: "Q1", max_marks: 1, topic: "Lecture 1", cognitive_level: "Remember", map_basis: "SLOs", slos: "SLO1", clos: "CLO1",
+          question_type: "MCQ", question_text: "Which study design starts from the outcome?", options: "Cohort | Case-control | Randomised trial | Cross-sectional", correct_answer: "B", model_answer: "", answer_lines: "", image: "" };
+        // options are saved as a JSON list; in the file they are written the easy way: a | b | c (Matching: left = right | ...)
+        const easy = (v) => { try { const x = JSON.parse(T.s(v)); if (Array.isArray(x)) return x.map((o) => (Array.isArray(o) ? `${o[0]} = ${o[1]}` : o)).join(" | "); } catch (e) { /* plain text */ } return T.s(v); };
+        const rows = saved.length ? saved.map((r) => ({ ...r, options: easy(r.options), image: r.image ? "(picture kept in TAMA)" : "" })) : [ex];
+        const help = [["Column", "Required?", "What to write"],
+          ["course_code", "Yes", `The course code exactly as in TAMA, e.g. ${sel}`], ["assessment", "Yes", `The exam name exactly as in the Summative table, e.g. ${exam}`],
+          ["question_id", "Yes", "Q1, Q2, Q3 ... (unique inside one exam)"], ["max_marks", "Yes", "The marks of the question, e.g. 1 or 5"],
+          ["topic", "Yes", "The lecture / module of the question"], ["cognitive_level", "Yes", "Remember, Understand, Apply, Analyze, Evaluate or Create"],
+          ["map_basis", "No", "SLOs or CLOs (empty = CLOs)"], ["slos", "No", "The one SLO the question measures, e.g. SLO2"], ["clos", "Yes", "The CLO(s), separated by commas, e.g. CLO1, CLO3"],
+          ["question_type", "No", "MCQ, True / False, Fill in the blank, Matching, Short Essay or Long Essay"], ["question_text", "No", "The question as it is printed on the paper"],
+          ["options", "No", "MCQ choices separated by | (Matching: left = right pairs separated by |)"], ["correct_answer", "No", "MCQ: the letter (A, B, C ...). True / False: True or False. Fill in the blank: the word"],
+          ["model_answer", "No", "Essay questions: the points of the model answer"], ["answer_lines", "No", "Essay questions: how many lines to leave on the paper"],
+          ["image", "No", "Leave empty for a new question; pictures are added in the Exam builder. '(picture kept in TAMA)' keeps the saved picture of that question: do not change it"],
+          ["", "", ""], ["IMPORTANT", "", "Importing this file REPLACES all the questions saved now, so keep the rows of the other exams and courses in it."]];
+        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(rows, { header: QUESTION_COLS });
+        ws["!cols"] = QUESTION_COLS.map((c) => ({ wch: ["question_text", "options", "model_answer"].includes(c) ? 40 : 14 }));
+        XLSX.utils.book_append_sheet(wb, ws, "Questions");
+        const hs = XLSX.utils.aoa_to_sheet(help); hs["!cols"] = [{ wch: 16 }, { wch: 10 }, { wch: 90 }]; XLSX.utils.book_append_sheet(wb, hs, "How to fill");
+        XLSX.writeFile(wb, "TAMA_questions_file.xlsx");
+      } catch (e) { T.toast("The file could not be built: " + e.message); }
+    };
     // a TAMA questions file: replaces all the saved questions
     const qf = $("#qi-file", el); let pending = null;
     if (qf) qf.onchange = async () => {
@@ -422,7 +451,12 @@ Leave out instructions, headers and student details. If there are no questions, 
         const t = (await T.importer.read(f))[0]; if (!t) { T.toast("The file has no table."); return; }
         const req = ["course_code", "assessment", "question_id", "max_marks", "topic", "cognitive_level", "clos"];
         const miss = req.filter((c) => !t.columns.includes(c)); if (miss.length) { T.toast("Required columns: " + [...req].sort().join(", ")); return; }
-        pending = t.rows.map((r) => Object.fromEntries(QUESTION_COLS.map((c) => [c, c in r ? r[c] : c === "map_basis" ? "CLOs" : ""])));
+        const pics = {}; (S.data.tables.questions || []).forEach((q) => { if (q.image) pics[`${q.course_code}||${q.assessment}||${q.question_id}`] = q.image; });
+        pending = t.rows.map((r) => { const o = Object.fromEntries(QUESTION_COLS.map((c) => [c, c in r ? r[c] : c === "map_basis" ? "CLOs" : ""]));
+          if (T.s(o.image).startsWith("(picture")) o.image = pics[`${o.course_code}||${o.assessment}||${o.question_id}`] || "";
+          const op = T.s(o.options).trim();   // "a | b | c" (or "left = right | ...") from the file to fill in -> the saved JSON list
+          if (op && !op.startsWith("[")) { const parts = op.split("|").map((x) => x.trim()).filter(Boolean); o.options = JSON.stringify(/matching/i.test(T.s(o.question_type)) ? parts.map((x) => { const i = x.indexOf("="); return i < 0 ? [x, ""] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }) : parts); }
+          return o; });
         $("#qi-confirm", el).hidden = false;
       } catch (e) { T.toast(e.message); }
     };
