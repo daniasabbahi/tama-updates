@@ -23,8 +23,8 @@
   }
   /** Planned = outcomes with that question type ticked for this exam (the table at the top of the page). */
   function planned(sel, exam, basis) {
-    const all = P().planRows(sel, basis), m = (S.data.bp_types || {})[`${sel}||${exam}||${basis}`] || {};
-    return [all.length, Object.fromEntries(TYPES.map((t) => [t, all.filter((r) => (m[r.id] || []).includes(t)).length]))];
+    const all = P().planRows(sel, basis), tp = T.bpTypesOf(sel, exam, basis);
+    return [all.length, Object.fromEntries(TYPES.map((t) => [t, all.filter((r) => tp(r.id).has(t)).length]))];
   }
   const P = () => T.plan;
   function typeSummary(g, sel, exam, basis) {

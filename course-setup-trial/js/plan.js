@@ -487,7 +487,7 @@
     // questions linked to the outcomes (from the Exam blueprint's question mapping)
     const qs = mine("questions", sel), link = basis === "CLOs" ? "clos" : "slos";
     let qHtml;
-    if (!qs.length) qHtml = `<div class="info-box"><span>No questions have been added yet. Add them in Exam blueprint, tab 'Question mapping', and the summaries will appear here.</span></div>`;
+    if (!qs.length) qHtml = `<div class="info-box"><span>No questions have been added yet. Add them in Blueprint for written exams, tab 'Exam builder', and the summaries will appear here.</span></div>`;
     else {
       const cnt = {}, mk = {};
       qs.forEach((q) => split(q[link]).forEach((i) => { cnt[i] = (cnt[i] || 0) + 1; mk[i] = (mk[i] || 0) + (numOf(q.max_marks) || 0); }));
@@ -496,7 +496,7 @@
         Questions: cnt[r.id] || 0, Marks: fmt(mk[r.id] || 0), "Share of questions (%)": tq ? fmt((cnt[r.id] || 0) / tq * 100) : "0" }));
       const doms = {}; rows.forEach((r) => { const d = (doms[r.domain] = doms[r.domain] || { Domain: r.domain, Outcomes: 0, Questions: 0, Marks: 0 }); d.Outcomes++; d.Questions += cnt[r.id] || 0; d.Marks += mk[r.id] || 0; });
       const domRows = Object.values(doms).map((d) => ({ ...d, Marks: fmt(d.Marks), "Share of questions (%)": tq ? fmt(d.Questions / tq * 100) : "0" }));
-      qHtml = `${basis === "SLOs" && !qs.some((q) => split(q.slos).length) ? `<p class="note">None of the questions is mapped to SLOs yet. In Question mapping choose 'SLOs' for the questions you want to see here.</p>` : ""}
+      qHtml = `${basis === "SLOs" && !qs.some((q) => split(q.slos).length) ? `<p class="note">None of the questions is mapped to SLOs yet. In the Exam builder choose 'SLOs' for the questions you want to see here.</p>` : ""}
         <details class="sum-box"><summary>Summary of questions linked to each ${basis.slice(0, -1)}</summary>${smallTable(Object.keys(per[0]), per)}</details>
         <details class="sum-box"><summary>Summary of questions linked to the ${basis.slice(0, -1)} domains</summary>${smallTable(Object.keys(domRows[0] || { Domain: "" }), domRows)}</details>
         <p class="note">Click a title to open its table. A question mapped to more than one outcome is counted under each of them.</p>`;

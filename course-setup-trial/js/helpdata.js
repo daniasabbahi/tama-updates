@@ -31,7 +31,7 @@ window.TAMA_HELP = {
 "Pick the course and the assessment (or choose **New** to start a new exam).",
 "Enter the exam duration and revision time, then press **Save exam details** once for a new exam.",
 "Section 1 tells you **how many questions** of each type and domain fit the time.",
-"Section 2 (**Question mapping**): add each question and link it to one SLO, or import questions from a file.",
+"Tab 2 (**Exam builder**): add each question and link it to one SLO, or import questions from a file.",
 "Your questions are kept in the **question bank** of the course code, so you can reuse them in later terms."
 ],
 "Item analysis": [
@@ -181,7 +181,7 @@ window.TAMA_HELP = {
 [
 "Exam blueprint",
 "How do I link a question to an SLO?",
-"In Exam blueprint, section 2 (Question mapping): each question is linked to one SLO."
+"In Blueprint for written exams, tab 2 (Exam builder): each question is linked to one SLO."
 ],
 [
 "Exam blueprint",

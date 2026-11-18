@@ -78,8 +78,8 @@
       jump: [["h-slotbl", "SLO table"], ["sec-sloadd", "Add SLOs"], ["h-topics", "Topics not covered"]] },
     "assessment-plan": { name: "Assessment plan", sub: "The grading breakdown of the course and which assessment methods measure each CLO or SLO. Everything saves itself as you type.",
       jump: [["h-summ", "Summative"], ["h-form", "Formative"], ["h-plan", "Plan"], ["h-plsum", "Summaries"]] },
-    "exam-blueprint": { name: "Blueprint for written exams", sub: "The question types of each test-based assessment, then how many MCQ, short essay and long essay questions each exam needs. Everything saves itself as you type.",
-      jump: [["h-bpplan", "Question types"], ["h-bpexam", "The exam"], ["h-bptab", "How many questions?"]] },
+    "exam-blueprint": { name: "Blueprint for written exams", sub: "Choose a test, its timing and question types, then how many MCQ, short essay and long essay questions each exam needs. Everything saves itself as you type.",
+      jump: [["h-bpexam", "The exam"], ["h-bpplan", "Question types"], ["h-bptab", "How many questions?"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -333,7 +333,8 @@
       .forEach(([id, dm, t, p]) => S.t("clos").push({ course_code: k, clo_id: id, clo_text: t, domain: dm, plo_1: p, plo_2: "", plo_3: "", target_pct: 70, kpi_threshold: 60 }));
     [["Lecture 1", "SLO1", "List the types of study design.", "K", "CLO1"], ["Lecture 1", "SLO2", "Explain bias and confounding.", "K", "CLO1"], ["Lecture 2", "SLO3", "Use a checklist to appraise a trial.", "S:Cog.", "CLO2"],
       ["Lecture 3", "SLO4", "Run a chi-square test in software.", "S:IT-N", "CLO3"], ["Lecture 4", "SLO5", "Write an informed consent form.", "V", "CLO4"], ["Lecture 4", "SLO6", "Discuss ethics approval steps.", "V", ""]]
-      .forEach(([tp, id, t, dm, cl]) => S.t("slos").push({ course_code: k, week: "Week " + tp.slice(-1), topic: tp, slo_id: id, slo_text: t, domain: dm, clo_id: cl, assessment_methods: "", target_kpi: 70 }));
+      .forEach(([tp, id, t, dm, cl], i) => S.t("slos").push({ course_code: k, week: "Week " + tp.slice(-1), topic: tp, slo_id: id, slo_text: t, domain: dm, clo_id: cl,
+        assessment_methods: ["Midterm exam, Final exam", "Midterm exam, Final exam", "Final exam", "Final exam", "Final exam, Presentations", "Presentations"][i], target_kpi: 70 }));
     // a small assessment plan, so the Assessment plan page has something to show
     S.data.extra_methods = S.data.extra_methods || {}; S.data.extra_methods[k] = ["Presentations"];
     S.data.tables.clo_plan = (S.data.tables.clo_plan || []).filter((r) => r.course_code !== k);

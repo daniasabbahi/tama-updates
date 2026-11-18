@@ -469,3 +469,13 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .qx-tbl { min-width: 1800px; } .qx-tbl td { padding: 3px 4px; } .qx-tbl .cell { font-size: 12.5px; }
 /* Blueprint: downloads */
 .rep-prev { width: 100%; height: 720px; border: 1px solid var(--line); border-radius: 8px; background: #fff; margin-top: 8px; }
+/* Blueprint: one test at a time (Dania 2026-11-19) */
+.bp-tbl.one th.bx-t { font-size: 12.5px; padding: 6px 4px; }
+.bp-tbl.one th.bx-h { font-size: 14px; }
+.bp-tbl td.bx.off { background: #eceff3; }
+.bp-tbl tr.locked td.ro { color: var(--soft); }
+.bp-tbl td.bx input:disabled { opacity: .45; cursor: not-allowed; }
+.bx-key { display: flex; gap: 18px; flex-wrap: wrap; }
+.bx-key i.off { background: #eceff3; border: 1px solid #d8dde4; }
+.bp-mh { margin-top: 18px; }
+.bp-min .cell.need { border-color: #d9a441; background: #fff7e6; }

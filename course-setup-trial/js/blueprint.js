@@ -37,87 +37,92 @@
   const examOf = (sel) => T.s((S.ui.bpExam || {})[sel]).trim();
   const setExam = (sel, v) => { S.ui.bpExam = S.ui.bpExam || {}; S.ui.bpExam[sel] = v; S.saveUi(); };
 
-  /** The question types ticked for one exam: {outcome id: Set of types}. */
+  /** The question types ticked for one exam: {outcome id: Set of types}. Only outcomes ticked for this exam in the
+      Assessment plan can have types (Dania 2026-11-19): a type saved earlier for an outcome that is no longer ticked there is ignored. */
   function typesOf(sel, exam, basis) {
-    const all = obj("bp_types")[key(sel, exam, basis)] || {};
-    return (id) => new Set((all[id] || []).filter((t) => TYPES.includes(t)));
+    const all = obj("bp_types")[key(sel, exam, basis)] || {}, rows = P().planRows(sel, basis);
+    const ok = new Set(rows.filter((r) => P().ticked(r, exam)).map((r) => r.id));
+    return (id) => new Set(ok.has(id) ? (all[id] || []).filter((t) => TYPES.includes(t)) : []);
   }
+  T.bpTypesOf = (sel, exam, basis) => typesOf(sel, exam, basis);
   function setType(sel, exam, basis, id, t, on) {
     const k = key(sel, exam, basis), all = obj("bp_types"), m = (all[k] = all[k] || {});
     const cur = new Set(m[id] || []); if (on) cur.add(t); else cur.delete(t);
     const list = TYPES.filter((x) => cur.has(x)); if (list.length) m[id] = list; else delete m[id];
     if (!Object.keys(m).length) delete all[k];
-    // a ticked question type means the outcome is assessed by this exam: tick it in the Assessment plan too
-    if (on) {
-      const r = P().planRows(sel, basis).find((x) => x.id === id);
-      if (r && !P().ticked(r, exam)) {
-        const ms = P().methods(sel), set = new Set(ms.filter((mm) => P().ticked(r, mm)).map((mm) => mm.toUpperCase())); set.add(exam.toUpperCase());
-        P().saveTicks(sel, basis, id, set);
-      }
-    }
     S.save();
   }
 
   /* ================================================================ 1. the plan of the written exams (top table) */
   T.sections.bpPlan = function () {
     const sel = T.current(), el = $("#sec-bpplan"); if (!el) return;
-    const basis = basisOf(), rows = P().planRows(sel, basis), ex = testExams(sel);
+    const basis = basisOf(), rows = P().planRows(sel, basis), ex = testExams(sel), exam = examOf(sel);
     let body;
     if (!rows.length) body = `<div class="info-box"><span>This course has no ${basis} yet. Add them in ${basis === "SLOs" ? "Lectures & SLOs" : "Course setup"}.</span><a class="btn sm" href="#${basis === "SLOs" ? "lectures-slos" : "course-setup"}">Go there</a></div>`;
     else if (!ex.length) body = `<div class="info-box"><span>No test-based assessment yet. In the <b>Summative assessment</b> table of the Assessment plan, choose <b>Test-based assessment / اختبارات</b> as the method of the quizzes and exams, and they appear here.</span><a class="btn sm" href="#assessment-plan">Go to Assessment plan</a></div>`;
+    else if (!exam || !ex.includes(exam)) body = `<div class="info-box"><span>Choose the test in <b>The exam</b> above, and its ${basis} appear here.</span></div>`;
     else {
-      const info = basis === "SLOs" ? [["week", "Date / Week", 62], ["lecture", "Lecture / module", 100], ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64], ["clo", "Linked CLO", 62]]
+      const info = basis === "SLOs" ? [["week", "Date / Week", 62], ["lecture", "Lecture / module", 110], ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64], ["clo", "Linked CLO", 62]]
         : [["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64]];
-      const TW = 34, fixed = 26 + info.reduce((a, [, , w]) => a + w, 0), minW = fixed + 220 + ex.length * 3 * TW;
-      const tps = ex.map((m) => typesOf(sel, m, basis));
-      body = `<p class="note">The columns are the <b>test-based</b> assessments of the Summative table. Under each one, tick the question types it uses for each outcome:
-          <b>MCQ</b>, <b>SE</b> = short essay, <b>LE</b> = long essay. A shaded box means the outcome is ticked for that assessment in the Assessment plan; ticking a type here ticks it there too. Each tick saves itself and is used in "How many questions?" below.</p>
-        <div class="bp-wrap"><table class="tbl bp-tbl" style="min-width:${minW}px"><colgroup><col style="width:26px">${info.map(([k, , w]) => `<col data-k="${k}"${w ? ` style="width:${w}px"` : ""}>`).join("")}${ex.map(() => TYPES.map(() => `<col style="width:${TW}px">`).join("")).join("")}</colgroup>
-        <thead><tr><th rowspan="2">#</th>${info.map(([, l]) => `<th rowspan="2" class="words">${l}</th>`).join("")}${ex.map((m, j) => `<th colspan="3" class="bx-h g${j % 2}" title="${esc(m)}">${esc(m)}</th>`).join("")}</tr>
-          <tr>${ex.map((m, j) => TYPES.map((t) => `<th class="bx-t g${j % 2}" title="${t}">${SHORT[t]}</th>`).join("")).join("")}</tr></thead>
-        <tbody>${rows.map((r, i) => `<tr><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro words ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
-          ${ex.map((m, j) => { const inPlan = P().ticked(r, m), on = tps[j](r.id); return TYPES.map((t, ti) => `<td class="ctr bx g${j % 2} ${inPlan ? "inplan" : ""} ${ti === 0 ? "first" : ""}"><input type="checkbox" data-bx="${j}" data-bt="${ti}" data-bi="${i}" data-ref="bx:${i}:${j}:${ti}" ${on.has(t) ? "checked" : ""} aria-label="${esc(r.id)}: ${esc(m)} ${t}" title="${esc(m)}: ${t}"></td>`).join(""); }).join("")}</tr>`).join("")}</tbody></table></div>
-        <div class="bx-key"><span><i class="inplan"></i>Ticked for this assessment in the Assessment plan</span></div>`;
+      const TW = 96, tp = typesOf(sel, exam, basis), nPlan = rows.filter((r) => P().ticked(r, exam)).length;
+      body = `<p class="note">Tick the question types <b>${esc(exam)}</b> uses for each outcome: <b>MCQ</b>, <b>Short essay</b> or <b>Long essay</b>.
+          Only the outcomes ticked for ${esc(exam)} in the Assessment plan (shaded) can be ticked here; the others are locked. Each tick saves itself and is used in "How many questions?" below.</p>
+        ${nPlan ? "" : `<p class="warn-text">No ${basis} is ticked for ${esc(exam)} in the Assessment plan yet, so every box is locked. Tick the outcomes this test assesses in the <a href="#assessment-plan">Assessment plan</a> first.</p>`}
+        <div class="bp-wrap"><table class="tbl bp-tbl one"><colgroup><col style="width:26px">${info.map(([k, , w]) => `<col data-k="${k}"${w ? ` style="width:${w}px"` : ""}>`).join("")}${TYPES.map(() => `<col style="width:${TW}px">`).join("")}</colgroup>
+        <thead><tr><th rowspan="2">#</th>${info.map(([, l]) => `<th rowspan="2" class="words">${l}</th>`).join("")}<th colspan="3" class="bx-h g0" title="${esc(exam)}">${esc(exam)}</th></tr>
+          <tr>${TYPES.map((t) => `<th class="bx-t g0">${t === "MCQ" ? "MCQ" : t.replace(" Essay", " essay")}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r, i) => { const inPlan = P().ticked(r, exam), on = tp(r.id);
+          return `<tr class="${inPlan ? "" : "locked"}"><td class="ro muted">${i + 1}</td>${info.map(([k]) => `<td class="ro words ${k === "statement" || k === "lecture" ? "wrap" : ""} ${k === "id" ? "b" : ""}">${esc(k === "clo" && !r.clo ? "(None)" : r[k])}</td>`).join("")}
+          ${TYPES.map((t, ti) => `<td class="ctr bx g0 ${inPlan ? "inplan" : "off"} ${ti === 0 ? "first" : ""}"><input type="checkbox" data-bt="${ti}" data-bi="${i}" data-ref="bx:${i}:${ti}" ${on.has(t) ? "checked" : ""} ${inPlan ? "" : "disabled"} aria-label="${esc(r.id)}: ${esc(exam)} ${t}" title="${inPlan ? `${esc(exam)}: ${t}` : `Not planned for ${esc(exam)} in the Assessment plan`}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
+        <div class="bx-key"><span><i class="inplan"></i>Ticked for ${esc(exam)} in the Assessment plan</span><span><i class="off"></i>Not planned for this test (locked)</span></div>`;
     }
-    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types of each test-based assessment</h2><p class="sub">Copied from the plan to measure learning outcomes, with the test-based assessments only.</p></div></div>
-      <div class="fld"><span class="lbl">Develop the blueprint based on</span>
-        <div class="seg">${["CLOs", "SLOs"].map((b) => `<button class="${basis === b ? "on" : ""}" data-bpb="${b}">${b}</button>`).join("")}</div></div>
-      ${body}`;
-    $$("[data-bpb]", el).forEach((b) => b.onclick = () => { S.ui.bpBasis = b.dataset.bpb; S.saveUi(); T.refresh("bpPlan", "bpTab"); });
-    $$("[data-bx]", el).forEach((c) => c.onchange = () => {
-      const r = rows[+c.dataset.bi], m = ex[+c.dataset.bx], t = TYPES[+c.dataset.bt];
-      setType(sel, m, basis, r.id, t, c.checked); T.refresh("bpPlan", "bpTab");
+    el.innerHTML = `<div class="sec-head" id="h-bpplan"><div><h2>Question types${exam && ex.includes(exam) ? ` of ${esc(exam)}` : ""}</h2><p class="sub">Copied from the plan to measure learning outcomes, for the test chosen in The exam above.</p></div></div>${body}`;
+    $$("[data-bt]", el).forEach((c) => c.onchange = () => {
+      const r = rows[+c.dataset.bi], t = TYPES[+c.dataset.bt];
+      setType(sel, exam, basis, r.id, t, c.checked); T.refresh("bpPlan", "bpTab");
     });
   };
 
   /* ================================================================ 2. the exam: name, duration, revision time */
-  const NEW = "__new__";
+  const NEW = "__new__";   // kept so old links in the code still work; the list no longer offers a new name
   T.sections.bpExam = function () {
     const sel = T.current(), el = $("#sec-bpexam"); if (!el) return;
-    const ex = testExams(sel), sv = savedExams(sel);
+    const ex = testExams(sel), basis = basisOf();
     let exam = examOf(sel);
-    const opts = [...new Set([...ex, ...sv])];
-    if (exam && exam !== NEW && !opts.includes(exam)) opts.push(exam);
-    const row = exam && exam !== NEW ? tbl("exams").find((r) => String(r.course_code) === String(sel) && T.s(r.assessment) === exam) : null;
+    if (exam && !ex.includes(exam)) { const m = ex.find((x) => same(x, exam)); exam = m || ""; setExam(sel, exam); }
+    const older = savedExams(sel).filter((x) => !ex.some((y) => same(x, y)));
+    let row = exam ? tbl("exams").find((r) => String(r.course_code) === String(sel) && T.s(r.assessment) === exam) : null;
+    // autosave: a chosen test starts as a 60-minute exam, so the builder works at once (unless a draft is being typed)
+    if (exam && !row && !(S.ui.bpDraft || {})[`${sel}||${exam}`]) { saveExam(sel, exam, 60, 0); row = tbl("exams").find((r) => String(r.course_code) === String(sel) && T.s(r.assessment) === exam); }
     const dur = row ? num(row.duration_min) : (S.ui.bpDraft || {})[`${sel}||${exam}`]?.dur ?? 60, rev = row ? num(row.revision_min) || 0 : (S.ui.bpDraft || {})[`${sel}||${exam}`]?.rev ?? 0;
     const actual = Math.max((dur || 0) - (rev || 0), 0);
-    const clash = exam && exam !== NEW && !sv.includes(exam) && sv.find((x) => same(x, exam) && x !== exam);
-    el.innerHTML = `<div class="sec-head" id="h-bpexam"><div><h2>The exam</h2><p class="sub">Each test-based assessment is a separate exam with its own duration, weights, minutes per question, blueprint plan and questions. Everything saves itself.</p></div></div>
+    let mins = "";
+    if (exam) {
+      const domains = [...new Set(P().planRows(sel, basis).map((r) => T.s(r.domain).trim()).filter(Boolean))];
+      const ms = minutesState(sel, exam, basis, domains), doms = domains.length ? domains : Object.keys(ms.MCQ || {});
+      const need = TYPES.map((t) => [t, new Set(P().planRows(sel, basis).filter((r) => typesOf(sel, exam, basis)(r.id).has(t)).map((r) => T.s(r.domain).trim()))]);
+      mins = `<h4 class="bp-mh">Minutes needed to answer one question, by domain</h4>
+        <p class="note">MCQ values follow your Excel sheet. Enter the minutes for Short essay and Long essay questions of each domain (the boxes start empty). An outcome is left out of the calculation until its domain has a value. Your entries save themselves at once.</p>
+        <div class="grid g3 bp-mins">${TYPES.map((t, ti) => `<div><h4 class="bp-th" style="color:${PAL[t][1]}">${t === "MCQ" ? "MCQ" : t.replace(" Essay", " essay")}</h4><table class="tbl bp-min"><colgroup><col><col style="width:46%"></colgroup><thead><tr><th>Domain</th><th>Minutes per question</th></tr></thead><tbody>
+          ${Object.keys(ms[t]).filter((d) => doms.includes(d) || ms[t][d] !== null).map((d) => { const v = num(ms[t][d]), miss = v === null && need[ti][1].has(d); return `<tr><td class="ro">${esc(d)}</td><td><input type="text" inputmode="decimal" class="cell ${v !== null ? "filled" : ""} ${miss ? "need" : ""}" data-mt="${t}" data-md="${esc(d)}" data-ref="m:${t}:${esc(d)}" value="${v === null ? "" : esc(g2(v))}" ${miss ? `title="Needed: an outcome of this domain has ${t} ticked"` : ""}></td></tr>`; }).join("")}</tbody></table></div>`).join("")}</div>`;
+    }
+    el.innerHTML = `<div class="sec-head" id="h-bpexam"><div><h2>The exam</h2><p class="sub">Choose the test you want to build the blueprint for. Each test-based assessment is a separate exam with its own duration, minutes per question, question types, weights and questions. Everything saves itself.</p></div></div>
       <div class="grid g3 bp-exam">
-        <label class="fld ${exam ? "filled" : ""}" for="bp-exam"><span class="lbl">Assessment <i class="hint" title="The test-based assessments (quizzes, midterm, final ...) of the Summative assessment table, then other exams saved for this course.">?</i></span>
-          <select id="bp-exam" data-ref="bp-exam"><option value="" ${exam ? "" : "selected"}>${opts.length ? "Choose an assessment" : "Add the test-based assessments in the Summative table first"}</option>
-          ${opts.map((o) => `<option value="${esc(o)}" ${o === exam ? "selected" : ""}>${esc(o)}${ex.includes(o) ? "" : " (saved exam)"}</option>`).join("")}<option value="${NEW}" ${exam === NEW ? "selected" : ""}>➕ New assessment (type its name)</option></select></label>
-        ${exam === NEW ? T.field({ id: "bp-new", label: "Name of the new assessment", placeholder: "e.g. Quiz 2, then press Enter", help: "It becomes a separate exam of this course." }) : ""}
+        <label class="fld ${exam ? "filled" : ""}" for="bp-exam"><span class="lbl">Test <i class="hint" title="The test-based assessments (quizzes, midterm, final ...) of the Summative assessment table in the Assessment plan.">?</i></span>
+          <select id="bp-exam" data-ref="bp-exam"><option value="" ${exam ? "" : "selected"}>${ex.length ? "Choose a test" : "Add the test-based assessments in the Summative table first"}</option>
+          ${ex.map((o) => `<option value="${esc(o)}" ${o === exam ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></label>
+        <div class="fld"><span class="lbl">Develop the blueprint based on</span>
+          <div class="seg">${["CLOs", "SLOs"].map((b) => `<button class="${basis === b ? "on" : ""}" data-bpb="${b}">${b}</button>`).join("")}</div></div>
       </div>
-      ${clash ? `<p class="warn-text">This course already has an exam called '${esc(clash)}'. Choose it in the list to keep working on it, or this name becomes a separate exam.</p>` : ""}
-      ${exam && exam !== NEW ? `<div class="grid g3 bp-exam">
+      ${ex.length ? "" : `<div class="info-box"><span>The list shows the <b>test-based</b> assessments of the Summative table. Choose <b>Test-based assessment / اختبارات</b> as their method in the Assessment plan.</span><a class="btn sm" href="#assessment-plan">Go to Assessment plan</a></div>`}
+      ${older.length ? `<p class="note">Saved earlier but not a test-based assessment in the Summative table: ${older.map((x) => `<b>${esc(x)}</b>`).join(", ")}. To work on it here, add it to the Summative table with the method Test-based assessment (same name).</p>` : ""}
+      ${exam ? `<div class="grid g3 bp-exam">
         <label class="fld filled" for="bp-dur"><span class="lbl">Exam duration (minutes)</span><input type="text" inputmode="decimal" id="bp-dur" data-ref="bp-dur" value="${esc(g2(dur))}"></label>
         <label class="fld ${rev ? "filled" : ""}" for="bp-rev"><span class="lbl">Revision / extra time (minutes, if any)</span><input type="text" inputmode="decimal" id="bp-rev" data-ref="bp-rev" value="${esc(g2(rev))}"></label>
         <div class="kcard a bp-actual"><div class="lab">Actual exam time</div><div class="big">${g2(actual)} <small>minutes</small></div></div>
-      </div>${!row ? `<p class="note">The exam is saved as soon as it has a duration above 0.</p>` : ""}${T.bpRenameHtml(sel, exam)}` : ""}`;
-    $("#bp-exam", el).onchange = (e) => { setExam(sel, e.target.value); T.refresh("bpExam", "bpTab"); };
-    const nw = $("#bp-new", el);
-    if (nw) { nw.focus(); nw.onkeydown = (e) => { if (e.key !== "Enter") return; const v = T.s(nw.value).trim(); if (!v) return; setExam(sel, v); saveExam(sel, v, 60, 0); T.toast(`'${v}' added.`); T.refresh("bpExam", "bpTab"); }; }
+      </div>${!row ? `<p class="note">The exam is saved as soon as it has a duration above 0.</p>` : ""}${mins}${T.bpRenameHtml(sel, exam)}` : ""}`;
+    $("#bp-exam", el).onchange = (e) => { setExam(sel, e.target.value); T.refresh("bpExam", "bpPlan", "bpTab"); };
+    $$("[data-bpb]", el).forEach((b) => b.onclick = () => { S.ui.bpBasis = b.dataset.bpb; S.saveUi(); T.refresh("bpExam", "bpPlan", "bpTab"); });
     const save = () => {
       const d = num($("#bp-dur", el).value), r = num($("#bp-rev", el).value) || 0;
       if (d !== null && d > 0) saveExam(sel, exam, d, Math.max(r, 0));
@@ -125,7 +130,13 @@
       T.refresh("bpExam", "bpTab");
     };
     ["#bp-dur", "#bp-rev"].forEach((id) => { const i = $(id, el); if (i) i.onchange = save; });
-    if (exam && exam !== NEW) T.bpRenameWire(sel, exam, el, (v) => setExam(sel, v));
+    const k = key(sel, exam, basis);
+    $$("[data-mt]", el).forEach((i) => i.onchange = () => {
+      const m = obj("bp_minutes3")[k]; if (!m) return; const v = num(i.value);
+      m[i.dataset.mt][i.dataset.md] = v !== null && v > 0 ? Math.max(0.5, Math.round(v * 2) / 2) : null;
+      S.save(); T.refresh("bpExam", "bpTab");
+    });
+    if (exam) T.bpRenameWire(sel, exam, el, (v) => setExam(sel, v));
   };
   function saveExam(sel, exam, dur, rev) {
     const t = tbl("exams"); let r = t.find((x) => String(x.course_code) === String(sel) && T.s(x.assessment) === exam);
@@ -140,7 +151,7 @@
   };
 
   /* ================================================================ 3. tabs: how many questions / question mapping / downloads */
-  const TABS = [["build", "1. How many questions? (blueprint builder)"], ["map", "2. Question mapping (blueprint sheet)"], ["dl", "3. Download this exam"]];
+  const TABS = [["build", "1. How many questions? (blueprint builder)"], ["map", "2. Exam builder"], ["dl", "3. Download this exam"]];
   T.sections.bpTab = function () {
     const sel = T.current(), el = $("#sec-bptab"); if (!el) return;
     const tab = TABS.some(([k]) => k === S.ui.bpTab) ? S.ui.bpTab : "build";
@@ -240,11 +251,6 @@
     const R = compute(sel, exam), { basis, rows, wr, ms, need, over, calc, actual } = R;
     if (!rows.length) return `<div class="info-box"><span>This course has no ${basis} yet.</span></div>`;
     if (!wr.length) return `${live(R)}<p class="warn-text">None of the ${basis} has MCQ, SE or LE ticked for <b>${esc(exam)}</b> in the table at the top of this page, so there is nothing to put in this written exam yet.</p>`;
-    const doms = R.domains.length ? R.domains : Object.keys(ms.MCQ || {});
-    const minsHtml = `<details class="sum-box" ${S.ui.bpMinOpen === false ? "" : "open"} id="bp-mins"><summary>Minutes needed to answer one question, by domain (MCQ, Short Essay, Long Essay)</summary>
-      <p class="note">MCQ values follow your Excel sheet. Enter the minutes for Short Essay and Long Essay questions of each domain (the boxes start empty). An outcome is left out of the calculation until its domain has a value. Your entries save themselves at once.</p>
-      <div class="grid g3">${TYPES.map((t) => `<div><h4 class="bp-th" style="color:${PAL[t][1]}">${t}</h4><table class="tbl bp-min"><colgroup><col><col style="width:46%"></colgroup><thead><tr><th>Domain</th><th>Minutes per question</th></tr></thead><tbody>
-        ${Object.keys(ms[t]).filter((d) => doms.includes(d) || ms[t][d] !== null).map((d) => { const v = num(ms[t][d]); return `<tr><td class="ro">${esc(d)}</td><td><input type="text" inputmode="decimal" class="cell ${v !== null ? "filled" : ""}" data-mt="${t}" data-md="${esc(d)}" data-ref="m:${t}:${esc(d)}" value="${v === null ? "" : esc(g2(v))}"></td></tr>`; }).join("")}</tbody></table></div>`).join("")}</div></details>`;
     const info = [...(basis === "SLOs" ? [["lecture", "Lecture / module", 96]] : []), ["id", "ID", 52], ["statement", "Learning outcome", 0], ["domain", "Domain", 64]];
     const wHtml = `<h4>Importance weights</h4>
       <p class="note">3 = most important, 2 = moderate, 1 = least important, 0 = not in this exam. Each outcome's weights for MCQ, Short Essay and Long Essay must add up to <b>3 at most</b>. A weight can only be entered where the type is ticked for this exam in the table at the top of the page (grey boxes are locked).</p>
@@ -255,7 +261,7 @@
         <td class="ctr b tot ${bad ? "bad" : ""}">${g2(r.total)}</td></tr>`; }).join("")}</tbody></table></div>
       <p class="note">The totals, the colours, the flags and the blueprint update as soon as you enter a weight.</p>`;
     let msgs = "";
-    if (need.length) msgs += `<p class="warn-text">The minutes needed to answer one question were not completed for: ${esc(need.join("; "))}. The questions of these types cannot be counted until the minutes are entered (in "Minutes needed to answer one question" above).</p>`;
+    if (need.length) msgs += `<p class="warn-text">The minutes needed to answer one question were not completed for: ${esc(need.join("; "))}. The questions of these types cannot be counted until the minutes are entered (in "Minutes needed to answer one question" in The exam above).</p>`;
     const miss = []; TYPES.forEach((t) => wr.forEach((r) => { if (r.eff[t] > 0 && r.min[t] === null) miss.push(`${r.id} (${t}, domain ${r.domain})`); }));
     if (miss.length) msgs += `<p class="warn-text">These question types are NOT counted yet because the minutes per question are empty for their domain: ${esc(miss.join("; "))}.</p>`;
     let res = "";
@@ -263,7 +269,7 @@
     else if (actual <= 0) res = `<p class="warn-text">Enter an exam duration that is greater than the revision time in The exam above.</p>`;
     else if (R.totalW === 0) res = `<div class="info-box"><span>Enter the importance weights (0 to 3) for the planned question types above to see how many questions are needed. The blueprint plan saves itself once the numbers can be calculated.</span></div>`;
     else res = results(sel, exam, R);
-    return `${live(R)}${minsHtml}${msgs}${overview(R, exam)}${wHtml}${res}`;
+    return `${live(R)}${msgs}${overview(R, exam)}${wHtml}${res}`;
   }
 
   function live(R) {
@@ -318,12 +324,6 @@
 
   function wireBuilder(sel, exam, el) {
     const basis = basisOf(), k = key(sel, exam, basis);
-    const mins = $("#bp-mins", el); if (mins) mins.ontoggle = () => { S.ui.bpMinOpen = mins.open; S.saveUi(); };
-    $$("[data-mt]", el).forEach((i) => i.onchange = () => {
-      const m = obj("bp_minutes3")[k]; if (!m) return; const v = num(i.value);
-      m[i.dataset.mt][i.dataset.md] = v !== null && v > 0 ? Math.max(0.5, Math.round(v * 2) / 2) : null;
-      S.save(); T.refresh("bpTab");
-    });
     $$("[data-wi]", el).forEach((i) => i.onchange = () => {
       const R = compute(sel, exam), r = R.wr[+i.dataset.wi], t = i.dataset.wt; if (!r) return;
       const all = obj("bp_raw"), m = (all[k] = all[k] || {});
@@ -354,7 +354,7 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-bpplan"></section><section class="card" id="sec-bpexam"></section><section class="card" id="sec-bptab"></section>`;
-    T.refresh("bpPlan", "bpExam", "bpTab");
+    content.innerHTML = `<section class="card" id="sec-bpexam"></section><section class="card" id="sec-bpplan"></section><section class="card" id="sec-bptab"></section>`;
+    T.refresh("bpExam", "bpPlan", "bpTab");
   };
 })();

@@ -240,7 +240,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
       });
     });
     const other = q.filter((x) => !Q_TYPES.includes(T.s(x.question_type)));
-    if (other.length) { parts.push(`<div class="sec">Questions without written content<small>Open Question mapping and add the question text</small></div>`);
+    if (other.length) { parts.push(`<div class="sec">Questions without written content<small>Open the Exam builder and add the question text</small></div>`);
       other.forEach((r) => { n++; parts.push(`<div class="q"><div class="t"><span class="n">${n}.</span><span>${esc(r.question_id)} - ${esc(r.topic)}</span><span class="m">[${esc(fmtMarks(r.max_marks))}]</span></div></div>`); }); }
     if (!q.length) parts.push("<p>No questions have been added to this exam yet.</p>");
     const rtl = /[؀-ۿ]/.test(parts.join("")) ? ' dir="auto"' : "";
