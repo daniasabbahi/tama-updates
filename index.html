@@ -200,10 +200,15 @@ async function unlock(pw) {
   const lk = await (await fetch("./app.locked.json?v=" + Date.now(), { cache: "no-store" })).json();
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
   const key = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: b64(lk.salt), iterations: lk.iter }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-  const zipped = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(lk.iv) }, key, b64(lk.data));   // fails when the password is wrong
-  const plain = new Blob([zipped]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return await new Response(plain).text();
+  const open1 = async (iv, data) => new Response(new Blob([await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(iv) }, key, b64(data))])
+    .stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  const code = await open1(lk.iv, lk.data);   // fails when the password is wrong
+  // files TAMA keeps beside app.py (the built-in Word templates, tama_templates.json)
+  extraFiles = {};
+  for (const [name, f] of Object.entries(lk.files || {})) extraFiles[name] = { data: await open1(f.iv, f.data) };
+  return code;
 }
+let extraFiles = {};
 
 async function readFolderData() {
   if (!folder) return null;
@@ -274,7 +279,7 @@ $("go").onclick = async () => {
   }
   if (!fromFolder && !bCopy) fromFolder = window.__tamaPreload || null;
   window.__tamaPick = { folder: fCopy ? fCopy.time : null, browser: bCopy ? bCopy.time : null, used: fromFolder ? "folder" : "browser" };
-  const files = { "app.py": { data: code } };
+  const files = { "app.py": { data: code }, ...extraFiles };
   if (fromFolder) files[DATA_PATH] = { data: fromFolder };   // the folder copy is the main copy, put in place before TAMA starts
   const { mount } = await import(STLITE);
   $("start").hidden = true;
@@ -287,6 +292,31 @@ $("go").onclick = async () => {
     ...(LOCAL ? { pyodideUrl: new URL("./pyodide-local/pyodide.mjs", location.href).href } : {}),
   }, $("root"));
   window.__tama = app;
+  // ---- downloads made "on click" (the small Excel buttons above tables): the browser edition of Streamlit
+  // points them at an address that does not exist, so they are fetched from TAMA itself and saved here instead
+  (() => {
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      const m = /^https?:\/\/stlite\.invalid\/.*?\/media\/([A-Za-z0-9_.-]+)$/.exec(this.href || "");
+      if (!m) return origClick.call(this);
+      const id = m[1], tmp = "/tmp/_tama_dl_" + Date.now() + "_" + Math.random().toString(36).slice(2) + ".bin";   // one file per click
+      (async () => {
+        try {
+          const info = JSON.parse(await app.runPython(
+            "import json as _j\nfrom streamlit.runtime import get_instance as _gi\n" +
+            "_f = _gi().media_file_mgr._storage.get_file(" + JSON.stringify(id) + ")\n" +
+            "open(" + JSON.stringify(tmp) + ", 'wb').write(_f.content)\n" +
+            "_j.dumps({'name': _f.filename or 'download', 'mime': _f.mimetype})\n"));
+          const bytes = await app.readFile(tmp);
+          app.runPython("import os as _o\ntry:\n    _o.remove(" + JSON.stringify(tmp) + ")\nexcept Exception:\n    pass\n").catch(() => {});
+          const url = URL.createObjectURL(new Blob([bytes], { type: info.mime || "application/octet-stream" }));
+          const a = document.createElement("a"); a.href = url; a.download = info.name;
+          document.body.appendChild(a); origClick.call(a); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) { console.error("TAMA download failed", e); alert("This file could not be downloaded. Please click the button again."); }
+      })();
+    };
+  })();
   // hidden helper boxes of TAMA (scripts with no height) should not leave empty gaps on the page
   const tidy = () => document.querySelectorAll('#root [data-testid="stElementContainer"]').forEach(el => {
     if (el.dataset.tamaTidy || !el.querySelector('iframe') || el.innerText.trim() || el.querySelector('canvas, img, input, button, table')) return;
