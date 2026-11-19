@@ -159,11 +159,11 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}th{backg
 
   /* ---------------------------------------------------------------- rename / join / delete an exam (TAMA's _exam_apply) */
   const sameName = (sel, name, but) => { const w = T.s(name).split(/\s+/).filter(Boolean).join(" ").toLowerCase(); return examNames(sel).find((e) => e !== but && e.split(/\s+/).filter(Boolean).join(" ").toLowerCase() === w) || null; };
-  const KEYED = ["bp_raw", "bp_weights2", "bp_minutes3", "bp_types", "ia_source"];
+  const KEYED = ["bp_raw", "bp_weights2", "bp_minutes3", "bp_types", "ia_source", "paper_info"];
   function parts(sel, name) {
     const out = [], L = { questions: "questions (question mapping)", plans: "blueprint plan", marks: "student marks", ia_map: "item analysis SLO links", ia_tests: "item analysis", ia_results: "item analysis results", slo_other: "results by SLO", course_assessments: "full grade (course assessments)" };
     Object.entries(S.data.tables).forEach(([t, rows]) => { if (t !== "exams" && Array.isArray(rows) && rows.some((r) => String(r.course_code) === String(sel) && T.s(r.assessment) === name)) out.push(L[t] || t); });
-    KEYED.forEach((k) => { if (Object.keys(S.data[k] || {}).some((x) => { const p = x.split("||"); return p[0] === String(sel) && p[1] === name; })) out.push({ bp_minutes3: "blueprint minutes", bp_types: "question types", ia_source: "item analysis source" }[k] || "blueprint plan"); });
+    KEYED.forEach((k) => { if (Object.keys(S.data[k] || {}).some((x) => { const p = x.split("||"); return p[0] === String(sel) && p[1] === name; })) out.push({ bp_minutes3: "blueprint minutes", bp_types: "question types", ia_source: "item analysis source", paper_info: "information at the top of the paper" }[k] || "blueprint plan"); });
     return [...new Set(out)];
   }
   const deep = (v, o, n) => (typeof v === "string" ? (v === o ? n : v) : Array.isArray(v) ? v.map((x) => deep(x, o, n)) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k === o ? n : k, deep(x, o, n)])) : v);

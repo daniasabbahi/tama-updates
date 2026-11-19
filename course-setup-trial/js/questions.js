@@ -112,8 +112,10 @@
     const printHtml = `<h3 class="qm-h">Print ${esc(exam)}</h3>
       ${here.length ? `<p class="note">${here.length} question(s), ${g2(here.reduce((a, x) => a + (num(x.max_marks) || 0), 0))} marks. The questions are grouped by type, numbered and laid out for printing.</p>
         ${[["Exam paper", false], ["Answer key", true]].map(([l, k]) => `<div class="qm-print"><b>${l}</b><button class="btn sm" data-pp="html" data-pk="${k ? 1 : 0}">⬇ HTML</button><button class="btn sm" data-pp="doc" data-pk="${k ? 1 : 0}">⬇ Word</button><button class="btn sm" data-pp="pdf" data-pk="${k ? 1 : 0}">Print / save as PDF</button></div>`).join("")}
-        <p class="note">The HTML file gives the best layout: open it in your browser and press Ctrl+P. "Print / save as PDF" opens the paper and the print window (choose "Save as PDF" there). The Word file opens in Microsoft Word and can be edited. Arabic text prints correctly in all three.</p>`
-      : `<p class="note">${esc(exam)} has no questions yet. Add them in <b>Add questions</b>, then print the paper here.</p>`}`;
+        <p class="note">The HTML file gives the best layout: open it in your browser and press Ctrl+P. "Print / save as PDF" opens the paper and the print window (choose "Save as PDF" there). The Word file opens in Microsoft Word and can be edited${(S.data.paper_templates || {})[sel] || (S.data.paper_templates || {})["*"] ? "; it uses your faculty's Word template" : ""}. Arabic text prints correctly in all three.</p>`
+      : `<p class="note">${esc(exam)} has no questions yet. Add them in <b>Add questions</b>, then print the paper here.</p>`}
+      ${T.paperInfoHtml ? T.paperInfoHtml(sel, exam) : ""}
+      ${T.paperTplHtml ? T.paperTplHtml(sel, exam) : ""}`;
     const body = sub === "bank" ? bankHtml : sub === "print" ? printHtml : sub === "reports" ? (T.bpDownloadsTab ? T.bpDownloadsTab(sel, exam) : "") : addHtml;
     return `${multiHtml}${bar}<div class="sub-body">${body}</div>`;
   };
@@ -153,6 +155,8 @@
       const blob = new Blob(["﻿" + [cols.map(q).join(","), ...qOf(sel).map((r) => cols.map((c) => q(r[c])).join(","))].join("\r\n")], { type: "text/csv" });
       dl(blob, "exam_blueprint.csv"); };
     $$("[data-pp]", el).forEach((b) => b.onclick = () => printPaper(sel, exam, b.dataset.pk === "1", b.dataset.pp));
+    if (T.paperTplWire) T.paperTplWire(sel, exam, el);
+    if (T.paperInfoWire) T.paperInfoWire(sel, exam, el);
     // delete + renumber
     const dels = $$("[data-qdel]", el), warn = $("#qdel-warn", el), okl = $("#qdel-ok-l", el);
     dels.forEach((c) => c.onchange = () => { const n = dels.filter((x) => x.checked).map((x) => x.dataset.qdel); warn.hidden = okl.hidden = !n.length;
@@ -209,7 +213,7 @@
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;background:#e9edf2;line-height:1.45;font-size:14px}
 .paper{max-width:800px;margin:18px auto;background:#fff;padding:28px 34px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
 .head{text-align:center;border-bottom:2px solid #14365d;padding-bottom:10px;margin-bottom:12px}
-.head h1{margin:0;font-size:20px;color:#14365d}.head h2{margin:2px 0;font-size:15px;font-weight:600}.head .sub{font-size:12.5px;color:#444}
+.head h1{margin:0;font-size:20px;color:#14365d}.head img.hdr{display:block;width:100%;margin:0 0 8px}.info .iv{font-weight:400}.instr{font-size:13px;margin:4px 0 10px;padding:6px 10px;border:1px solid #bbb;border-radius:4px}.head h2{margin:2px 0;font-size:15px;font-weight:600}.head .sub{font-size:12.5px;color:#444}
 .info{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:13px;margin:10px 0}.info div{border-bottom:1px solid #999;padding:3px 0;min-height:22px}
 .sec{margin:18px 0 6px;padding:5px 10px;background:#14365d;color:#fff;border-radius:4px;font-weight:700;font-size:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sec small{font-weight:400;opacity:.9;margin-left:8px}
@@ -227,8 +231,10 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
   function paperHtml(sel, exam, key) {
     const c = S.courseInfo(sel) || {}, ex = tbl("exams").find((x) => String(x.course_code) === String(sel) && T.s(x.assessment) === exam);
     const q = qOf(sel, exam), total = q.reduce((a, x) => a + (num(x.max_marks) || 0), 0), dur = ex && num(ex.duration_min) !== null ? `${g2(num(ex.duration_min))} minutes` : "";
-    const parts = [`<div class="head"><h1>${esc(c.department) || "Exam paper"}</h1><h2>${esc(T.baseCode(c.course_code || sel))} - ${esc(c.course_name)}</h2><div class="sub">${esc(exam)} - ${esc(c.term)} ${esc(c.year)}${key ? '<span class="stamp">ANSWER KEY</span>' : ""}</div></div>`,
-      `<div class="info"><div>Student name:</div><div>Student ID:</div><div>Time allowed: ${esc(dur) || "........"}</div><div>Total marks: ${g2(total)}</div></div>`];
+    const hdr = T.paperHeaderOf ? T.paperHeaderOf(sel) : "";
+    const parts = [`<div class="head">${hdr ? `<img class="hdr" src="${esc(hdr)}" alt="">` : `<h1>${esc(c.department) || "Exam paper"}</h1>`}<h2>${esc(T.baseCode(c.course_code || sel))} - ${esc(c.course_name)}</h2><div class="sub">${esc(exam)} - ${esc(c.term)} ${esc(c.year)}${key ? '<span class="stamp">ANSWER KEY</span>' : ""}</div></div>`,
+      `<div class="info">${(T.paperInfoCells ? T.paperInfoCells(sel, exam, dur, g2(total)) : [["Student name", ""], ["Student ID", ""], ["Time allowed", dur], ["Total marks", g2(total)]]).map(([l, v]) => `<div>${esc(l)}: ${v ? `<b class="iv">${esc(v)}</b>` : ""}</div>`).join("")}</div>`
+      + (T.paperInfo && T.paperInfo(sel, exam).instructions.trim() ? `<div class="instr"><b>Instructions:</b> ${esc(T.paperInfo(sel, exam).instructions.trim()).replace(/\n/g, "<br>")}</div>` : "")];
     let n = 0;
     Q_TYPES.forEach((t) => {
       const qs = q.filter((x) => T.s(x.question_type) === t); if (!qs.length) return;
@@ -268,8 +274,9 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
   function printPaper(sel, exam, key, how) {
     const html = paperHtml(sel, exam, key), sf = `${T.baseCode(sel)}_${exam}`.replace(/[^\w؀-ۿ-]+/g, "_"), nm = `${key ? "answer_key" : "exam_paper"}_${sf}`;
     if (how === "html") dl(new Blob([html], { type: "text/html" }), `${nm}.html`);
-    else if (how === "doc") dl(new Blob(["﻿" + html.replace("<html>", '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">')], { type: "application/msword" }), `${nm}.doc`);
+    else if (how === "doc") T.bpPaperDocx(sel, exam, key).then((b) => dl(b, `${nm}.docx`)).catch((e) => T.toast("The Word file could not be built: " + e.message));
     else { const w = window.open("", "_blank"); if (!w) { T.toast("The browser blocked the new window. Allow pop-ups for this site, or use ⬇ HTML."); return; } w.document.write(html); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* closed */ } }, 500); }
   }
   T.bpPaperHtml = paperHtml;
+  T.bpPaperParts = { qOf, Q_TYPES, Q_SECTION, Q_INSTR, jl, seeded, fmtMarks };
 })();
