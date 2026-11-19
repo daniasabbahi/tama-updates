@@ -8,7 +8,7 @@
   const Q_INSTR = { MCQ: "Choose the ONE best answer.", "True / False": "Mark each statement as True or False.", "Fill in the blank": "Write the missing word(s) in each blank.",
     Matching: "Match each item in the left column with the correct item in the right column.", "Short Essay": "Answer briefly in the space provided.", "Long Essay": "Answer fully in the space provided." };
   const LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Not classified"];
-  const QUESTION_COLS = ["course_code", "assessment", "question_id", "max_marks", "topic", "cognitive_level", "map_basis", "slos", "clos", "question_type", "question_text", "options", "correct_answer", "model_answer", "answer_lines", "image"];
+  const QUESTION_COLS = ["course_code", "assessment", "question_id", "max_marks", "topic", "cognitive_level", "map_basis", "slos", "clos", "question_type", "question_text", "options", "correct_answer", "model_answer", "answer_lines", "image", "options_layout"];
   const tbl = (n) => (Array.isArray(S.data.tables[n]) ? S.data.tables[n] : (S.data.tables[n] = []));
   const split = (t) => T.s(t).replace(/;/g, ",").split(",").map((x) => x.trim()).filter((x) => x && !["nan", "none"].includes(x.toLowerCase()));
   const num = (v) => { const x = parseFloat(String(v === undefined || v === null ? "" : v).replace(",", ".").trim()); return isNaN(x) ? null : x; };
@@ -51,7 +51,9 @@
     const clos = d.closFor === d.slo && Array.isArray(d.clos) ? d.clos : autoClo;
     const t = d.type;
     const content = t === "MCQ" ? `${T.field({ id: "qd-stem", label: "Question stem", req: true, textarea: true, rows: 2, value: d.stem })}
-        <div class="grid g3"><label class="fld filled"><span class="lbl">Number of options</span><select id="qd-nopt">${[2, 3, 4, 5, 6].map((n) => `<option ${+d.nopt === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
+        <div class="grid g3"><label class="fld filled"><span class="lbl">Number of options</span><select id="qd-nopt">${[2, 3, 4, 5, 6].map((n) => `<option ${+d.nopt === n ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+          <div class="fld"><span class="lbl">Options in the printed paper <i class="hint" title="Two columns put the options side by side (A and B on the first line, C and D on the next), which saves space for short options.">?</i></span>
+            <div class="seg">${[["", "One column"], ["2", "Two columns"]].map(([v, l]) => `<button class="${(d.ocols || "") === v ? "on" : ""}" data-qocol="${v}">${l}</button>`).join("")}</div></div></div>
         <div class="grid g2">${Array.from({ length: +d.nopt }, (_, i) => T.field({ id: `qd-opt${i}`, label: `Option ${String.fromCharCode(65 + i)}`, req: true, value: (d.opts || [])[i] })).join("")}</div>
         <div class="grid g3">${T.select({ id: "qd-ans", label: "Correct answer", req: true, placeholder: "Select the correct option", value: d.ans, options: Array.from({ length: +d.nopt }, (_, i) => String.fromCharCode(65 + i)) })}</div>`
       : t === "True / False" ? `${T.field({ id: "qd-stem", label: "Statement", req: true, textarea: true, rows: 2, value: d.stem })}
@@ -131,6 +133,7 @@
     $$("[id^=qd-opt]", el).forEach((x) => x.oninput = () => { d.opts = d.opts || []; d.opts[+x.id.slice(6)] = x.value; T.markFilled(x); keep(); });
     $$("[id^=qd-pl],[id^=qd-pr]", el).forEach((x) => x.oninput = () => { d.pairs = d.pairs || []; const i = +x.id.slice(5); d.pairs[i] = d.pairs[i] || ["", ""]; d.pairs[i][x.id[4] === "l" ? 0 : 1] = x.value; T.markFilled(x); keep(); });
     $$("[data-qtf]", el).forEach((b) => b.onclick = () => { d.ans = b.dataset.qtf; keep(); redraw(); });
+    $$("[data-qocol]", el).forEach((b) => b.onclick = () => { d.ocols = b.dataset.qocol; keep(); redraw(); });
     $$("[data-qclo]", el).forEach((c) => c.onchange = () => {
       const cur = new Set(d.closFor === d.slo && Array.isArray(d.clos) ? d.clos : (d.slo && info.slo2clo[d.slo] ? [info.slo2clo[d.slo]] : []));
       if (c.checked) cur.add(c.dataset.qclo); else cur.delete(c.dataset.qclo);
@@ -184,10 +187,10 @@
     const qid = nextId(sel, exam), slos = d.slo ? [d.slo] : [];
     const clos = d.closFor === d.slo && Array.isArray(d.clos) ? d.clos : (d.slo && info.slo2clo[d.slo] ? [info.slo2clo[d.slo]] : []);
     tbl("questions").push({ course_code: sel, assessment: exam, question_id: qid, max_marks: marks, topic: T.s(d.topic).trim(), cognitive_level: d.level || "Remember",
-      map_basis: slos.length ? "SLOs" : "CLOs", slos: slos.join(", "), clos: clos.join(", "), question_type: t, question_text: stem, options: opts, correct_answer: correct,
+      map_basis: slos.length ? "SLOs" : "CLOs", slos: slos.join(", "), clos: clos.join(", "), question_type: t, question_text: stem, options: opts, options_layout: t === "MCQ" && d.ocols === "2" ? "2" : "", correct_answer: correct,
       model_answer: model, answer_lines: lines, image: d.image || "" });
     // a new empty form, keeping the type, marks, topic and level (as TAMA keeps the last choices)
-    S.ui.qDraft[draftKey(sel, exam)] = { type: t, marks: d.marks, level: d.level, topic: d.topic, nopt: d.nopt, npair: d.npair, opts: [], pairs: [], lines: d.lines };
+    S.ui.qDraft[draftKey(sel, exam)] = { type: t, marks: d.marks, level: d.level, topic: d.topic, nopt: d.nopt, npair: d.npair, opts: [], pairs: [], lines: d.lines, ocols: d.ocols };
     S.save(); S.saveUi(); T.toast(`${qid} saved.`); T.refresh("bpTab");
   }
 
@@ -211,7 +214,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
 .sec{margin:18px 0 6px;padding:5px 10px;background:#14365d;color:#fff;border-radius:4px;font-weight:700;font-size:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sec small{font-weight:400;opacity:.9;margin-left:8px}
 .q{margin:10px 0;break-inside:avoid;page-break-inside:avoid}.q .t{display:flex;gap:8px}.q .n{font-weight:700;min-width:24px}.q .m{margin-left:auto;white-space:nowrap;color:#555;font-size:12px}
-.opts{margin:4px 0 0 32px}.opt{margin:2px 0}.opt b{display:inline-block;width:22px}
+.opts{margin:4px 0 0 32px}.opt{margin:2px 0}.opt b{display:inline-block;width:22px}.opts2{margin:4px 0 0 32px;border-collapse:collapse;width:calc(100% - 32px)}.opts2 td{width:50%;padding:2px 12px 2px 0;vertical-align:top;border:0}
 .blank{display:inline-block;min-width:90px;border-bottom:1.5px solid #111;margin:0 3px}
 .lines{margin:6px 0 0 32px;border:1px solid #bbb;border-radius:3px;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 25px,#bbb 25px,#bbb 26px)}
 .match{display:grid;grid-template-columns:1fr 1fr;gap:4px 30px;margin:4px 0 0 32px}
@@ -233,7 +236,11 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
       parts.push(`<div class="sec">${esc(Q_SECTION[t])}<small>${qs.length} question(s) - ${g2(mk)} mark(s). ${esc(Q_INSTR[t])}</small></div>`);
       qs.forEach((r) => {
         n++; let text = esc(r.question_text) || (t === "Matching" ? "Match the following:" : "<i>(question text not entered)</i>"), body = "";
-        if (t === "MCQ") body = `<div class="opts">${jl(r.options).map((o, i) => { const k = key && String.fromCharCode(65 + i) === T.s(r.correct_answer); return `<div class="opt${k ? " key" : ""}"><b>${String.fromCharCode(65 + i)}.</b> ${esc(o)}${k ? " &#10003;" : ""}</div>`; }).join("")}</div>`;
+        if (t === "MCQ") { const cells = jl(r.options).map((o, i) => { const k = key && String.fromCharCode(65 + i) === T.s(r.correct_answer); return [k, `<b>${String.fromCharCode(65 + i)}.</b> ${esc(o)}${k ? " &#10003;" : ""}`]; });
+          // two columns (Dania 2026-11-19): a table, so Word keeps the layout too; A B on the first line, C D on the next
+          if (T.s(r.options_layout) === "2") { const rows = []; for (let i = 0; i < cells.length; i += 2) rows.push(cells.slice(i, i + 2));
+            body = `<table class="opts2">${rows.map((rw) => `<tr>${rw.map(([k, h]) => `<td class="opt${k ? " key" : ""}">${h}</td>`).join("")}${rw.length < 2 ? "<td></td>" : ""}</tr>`).join("")}</table>`; }
+          else body = `<div class="opts">${cells.map(([k, h]) => `<div class="opt${k ? " key" : ""}">${h}</div>`).join("")}</div>`; }
         else if (t === "True / False") body = `<div class="opts tf">${["True", "False"].map((v) => { const k = key && T.s(r.correct_answer) === v; return `<span class="${k ? "key" : ""}">${v}${k ? " &#10003;" : ""}</span>`; }).join("")}</div>`;
         else if (t === "Fill in the blank") { const a = T.s(r.correct_answer).split(";").map((x) => x.trim()); let i = 0; text = text.replace(/_{3,}/g, () => (key ? `<span class="blank key">${esc(a[i++] || "")}</span>` : '<span class="blank"></span>')); }
         else if (t === "Matching") {

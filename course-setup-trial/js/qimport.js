@@ -9,7 +9,7 @@
   const QX_OPT = "ABCDEF";
   const QX_LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create", "Not classified"];
   const QX_DEFAULT_MARKS = { MCQ: 1, "True / False": 1, "Fill in the blank": 1, Matching: 2, "Short Essay": 2, "Long Essay": 5 };
-  const QUESTION_COLS = ["course_code", "assessment", "question_id", "max_marks", "topic", "cognitive_level", "map_basis", "slos", "clos", "question_type", "question_text", "options", "correct_answer", "model_answer", "answer_lines", "image"];
+  const QUESTION_COLS = ["course_code", "assessment", "question_id", "max_marks", "topic", "cognitive_level", "map_basis", "slos", "clos", "question_type", "question_text", "options", "correct_answer", "model_answer", "answer_lines", "image", "options_layout"];
   const AR_LET = { "أ": "A", "ا": "A", "ب": "B", "ج": "C", "د": "D", "ه": "E", "هـ": "E", "و": "F" };
   const arDig = (s) => s.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
   const QSTART = [/^\s*§Q\s*(.*)$/s, /^\s*(?:Q(?:uestion)?|السؤال|سؤال|س)\s*[.\-#:]?\s*(\d{1,3})\s*[.)\-–:]?\s*(.*)$/is, /^\s*\(?(\d{1,3})\s*(?:[.)]|\s[\-–])\s*(?=\D)(.+)$/s];
@@ -434,7 +434,7 @@ Leave out instructions, headers and student details. If there are no questions, 
           ["question_type", "No", "MCQ, True / False, Fill in the blank, Matching, Short Essay or Long Essay"], ["question_text", "No", "The question as it is printed on the paper"],
           ["options", "No", "MCQ choices separated by | (Matching: left = right pairs separated by |)"], ["correct_answer", "No", "MCQ: the letter (A, B, C ...). True / False: True or False. Fill in the blank: the word"],
           ["model_answer", "No", "Essay questions: the points of the model answer"], ["answer_lines", "No", "Essay questions: how many lines to leave on the paper"],
-          ["image", "No", "Leave empty for a new question; pictures are added in the Exam builder. '(picture kept in TAMA)' keeps the saved picture of that question: do not change it"],
+          ["options_layout", "No", "MCQ only: 2 = print the options in two columns; empty = one column"], ["image", "No", "Leave empty for a new question; pictures are added in the Exam builder. '(picture kept in TAMA)' keeps the saved picture of that question: do not change it"],
           ["", "", ""], ["IMPORTANT", "", "Importing this file REPLACES all the questions saved now, so keep the rows of the other exams and courses in it."]];
         const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(rows, { header: QUESTION_COLS });
         ws["!cols"] = QUESTION_COLS.map((c) => ({ wch: ["question_text", "options", "model_answer"].includes(c) ? 40 : 14 }));
