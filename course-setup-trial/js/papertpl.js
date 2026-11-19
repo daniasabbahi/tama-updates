@@ -15,19 +15,13 @@
   const dict = (k) => (S.data[k] && typeof S.data[k] === "object" && !Array.isArray(S.data[k]) ? S.data[k] : (S.data[k] = {}));
   const pick = (k, sel) => { const m = S.data[k] || {}; return m[sel] ? [sel, m[sel]] : m["*"] ? ["*", m["*"]] : [null, null]; };
   T.paperHeaderOf = (sel) => (pick("paper_header", sel)[1] || {}).img || "";
-  /** The information at the top of the paper (Dania 2026-11-19): exam date, instructions and extra lines, per exam. */
-  const infoKey = (sel, exam) => `${sel}||${exam}`;
-  T.paperInfo = (sel, exam) => { const v = (S.data.paper_info || {})[infoKey(sel, exam)] || {}; return { date: T.s(v.date), instructions: T.s(v.instructions), lines: Array.isArray(v.lines) ? v.lines.filter((l) => Array.isArray(l) && T.s(l[0]).trim()) : [] }; };
-  /** The boxes of the information grid: [label, value]; an empty value is a line for the student to fill in. */
-  T.paperInfoCells = (sel, exam, dur, total) => { const i = T.paperInfo(sel, exam);
-    return [["Student name", ""], ["Student ID", ""], ["Time allowed", dur], ["Total marks", total], ...(i.date ? [["Date", i.date]] : []), ...i.lines.map((l) => [T.s(l[0]).trim(), T.s(l[1]).trim()])]; };
   const b64ToBuf = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
   const bufToB64 = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 
   /* ---------------------------------------------------------------- Word XML pieces */
   const run = (t, o = {}) => (t === "" || t === undefined || t === null ? "" : `<w:r><w:rPr>${o.b ? "<w:b/><w:bCs/>" : ""}${o.i ? "<w:i/><w:iCs/>" : ""}${o.color ? `<w:color w:val="${o.color}"/>` : ""}${o.sz ? `<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>` : ""}${o.u ? '<w:u w:val="single"/>' : ""}${AR.test(t) ? "<w:rtl/>" : ""}</w:rPr><w:t xml:space="preserve">${X(t)}</w:t></w:r>`);
   const TAB = "<w:r><w:tab/></w:r>";
-  const para = (runs, o = {}) => `<w:p><w:pPr>${o.keep ? "<w:keepNext/>" : ""}${o.line ? '<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="999999"/></w:pBdr>' : ""}${o.shd ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.shd}"/>` : ""}${o.tab ? `<w:tabs><w:tab w:val="right" w:pos="${o.tab}"/></w:tabs>` : ""}${o.bidi ? "<w:bidi/>" : ""}<w:spacing w:before="${o.before || 0}" w:after="${o.after === undefined ? 60 : o.after}"${o.lineH ? ` w:line="${o.lineH}" w:lineRule="exact"` : ""}/>${o.ind ? `<w:ind w:left="${o.ind}"/>` : ""}${o.jc ? `<w:jc w:val="${o.jc}"/>` : ""}</w:pPr>${runs}</w:p>`;
+  const para = (runs, o = {}) => `<w:p><w:pPr>${o.keep ? "<w:keepNext/>" : ""}${o.line || o.lineColor ? `<w:pBdr><w:bottom w:val="single" w:sz="${o.lineColor ? 12 : 4}" w:space="1" w:color="${o.lineColor || "999999"}"/></w:pBdr>` : ""}${o.shd ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.shd}"/>` : ""}${o.tab ? `<w:tabs><w:tab w:val="right" w:pos="${o.tab}"/></w:tabs>` : ""}${o.bidi ? "<w:bidi/>" : ""}<w:spacing w:before="${o.before || 0}" w:after="${o.after === undefined ? 60 : o.after}"${o.lineH ? ` w:line="${o.lineH}" w:lineRule="exact"` : ""}/>${o.ind ? `<w:ind w:left="${o.ind}"/>` : ""}${o.jc ? `<w:jc w:val="${o.jc}"/>` : ""}</w:pPr>${runs}</w:p>`;
   const NIL = ["top", "left", "bottom", "right", "insideH", "insideV"].map((b) => `<w:${b} w:val="nil"/>`).join("");
   const grid2 = (rows, ind) => `<w:tbl><w:tblPr><w:tblW w:w="${9000 - ind}" w:type="dxa"/><w:tblInd w:w="${ind}" w:type="dxa"/><w:tblBorders>${NIL}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="${(9000 - ind) / 2}"/><w:gridCol w:w="${(9000 - ind) / 2}"/></w:tblGrid>
     ${rows.map((r) => `<w:tr>${[0, 1].map((i) => `<w:tc><w:tcPr><w:tcW w:w="${(9000 - ind) / 2}" w:type="dxa"/></w:tcPr>${r[i] || "<w:p/>"}</w:tc>`).join("")}</w:tr>`).join("")}</w:tbl>`;
@@ -45,12 +39,13 @@
   /** The questions as Word paragraphs, in the same order and layout as the HTML paper. */
   async function questionsXml(sel, exam, key, media) {
     const Q = T.bpPaperParts, q = Q.qOf(sel, exam), out = [], green = { b: true, color: "0B6B3A" };
+    const BAR = T.paperLayoutOf ? T.s(T.paperLayoutOf(sel)[1].bar || "#14365d").replace("#", "").toUpperCase() : "14365D";
     const bidi = (s) => AR.test(T.s(s));
     let n = 0;
     for (const t of Q.Q_TYPES) {
       const qs = q.filter((x) => T.s(x.question_type) === t); if (!qs.length) continue;
       const mk = qs.reduce((a, x) => a + (num(x.max_marks) || 0), 0);
-      out.push(para(run(Q.Q_SECTION[t], { b: true, color: "FFFFFF" }) + run(`   ${qs.length} question(s) - ${g2(mk)} mark(s). ${Q.Q_INSTR[t]}`, { color: "FFFFFF", sz: 18 }), { shd: "14365D", before: 240, after: 100, keep: true }));
+      out.push(para(run(Q.Q_SECTION[t], { b: true, color: "FFFFFF" }) + run(`   ${qs.length} question(s) - ${g2(mk)} mark(s). ${Q.Q_INSTR[t]}`, { color: "FFFFFF", sz: 18 }), { shd: BAR, before: 240, after: 100, keep: true }));
       for (const r of qs) {
         n++;
         let text = T.s(r.question_text) || (t === "Matching" ? "Match the following:" : "(question text not entered)"), textRuns;
@@ -74,14 +69,15 @@
           out.push(grid2(rows, 400));
         } else if (t === "Short Essay" || t === "Long Essay") {
           const lines = Math.max(1, Math.round(num(r.answer_lines) || (t === "Short Essay" ? 5 : 15)));
-          for (let i = 0; i < lines; i++) out.push(para("", { line: true, ind: 400, after: 0, lineH: 400 }));
+          // answer lines: a table whose rows have a bottom border (Word joins the borders of paragraphs that follow each other)
+          out.push(`<w:tbl><w:tblPr><w:tblW w:w="8600" w:type="dxa"/><w:tblInd w:w="400" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="999999"/><w:right w:val="nil"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="999999"/><w:insideV w:val="nil"/></w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="8600"/></w:tblGrid>${Array.from({ length: lines }, () => `<w:tr><w:trPr><w:trHeight w:val="420" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="8600" w:type="dxa"/></w:tcPr><w:p/></w:tc></w:tr>`).join("")}</w:tbl>`);
           if (key && T.s(r.model_answer).trim()) { out.push(para(run("Model answer / marking points:", green), { ind: 400, before: 80 }));
             T.s(r.model_answer).split(/\n/).forEach((l) => out.push(para(run(l, { color: "0B6B3A" }), { ind: 400, bidi: bidi(l) }))); }
         }
       }
     }
     const other = q.filter((x) => !Q.Q_TYPES.includes(T.s(x.question_type)));
-    if (other.length) { out.push(para(run("Questions without written content", { b: true, color: "FFFFFF" }), { shd: "14365D", before: 240 }));
+    if (other.length) { out.push(para(run("Questions without written content", { b: true, color: "FFFFFF" }), { shd: BAR, before: 240 }));
       other.forEach((r) => { n++; out.push(para(run(`${n}. ${T.s(r.question_id)} - ${T.s(r.topic)}`) + TAB + run(`[${Q.fmtMarks(r.max_marks)}]`, { color: "555555", sz: 18 }), { tab: 9000 })); }); }
     if (!q.length) out.push(para(run("No questions have been added to this exam yet.")));
     out.push(para(""));
@@ -98,9 +94,7 @@
     z.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdHdr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/></Relationships>`);
     z.file("word/header1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr ${NS}>${para(run("{{DEPARTMENT}}   |   {{COURSE_CODE}} - {{EXAM}}", { color: "777777", sz: 16 }), { jc: "right" })}</w:hdr>`);
     const body = [withHeaderNote ? para(run("{{HEADER_PICTURE}}"), { jc: "center" }) : "",
-      withHeaderNote ? "" : para(run("{{DEPARTMENT}}", { b: true, color: "14365D", sz: 32 }), { jc: "center", after: 0 }),
-      para(run("{{COURSE_CODE}} - {{COURSE_NAME}}", { b: true, sz: 24 }), { jc: "center", after: 0 }),
-      para(run("{{EXAM}} - {{TERM}} {{YEAR}}", { color: "444444", sz: 20 }) + run("   {{PAPER}}", { b: true, color: "0B6B3A", sz: 20 }), { jc: "center", after: 120, line: true }),
+      para(run("{{HEAD_BLOCK}}")),
       para(run("{{INFO_TABLE}}")), para(run("{{INSTRUCTIONS_BLOCK}}")),
       para(run("{{QUESTIONS}}")),
       `<w:sectPr><w:headerReference w:type="default" r:id="rIdHdr1"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000" w:header="500" w:footer="500" w:gutter="0"/></w:sectPr>`].join("");
@@ -129,20 +123,23 @@
       DATE: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }), EXAM_DATE: T.paperInfo(sel, exam).date, INSTRUCTIONS: T.paperInfo(sel, exam).instructions.replace(/\n/g, " "), PAPER: key ? "ANSWER KEY" : "", COURSE_DIRECTOR: T.s(c.course_director) };
   }
   function infoTable(sel, exam, vals) {
-    const cells = T.paperInfoCells(sel, exam, vals.DURATION, vals.TOTAL_MARKS), rows = [];
-    for (let i = 0; i < cells.length; i += 2) rows.push(cells.slice(i, i + 2));
-    const tc = (c) => `<w:tc><w:tcPr><w:tcW w:w="4700" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="999999"/></w:tcBorders></w:tcPr>${c ? para(run(`${c[0]}: `, { sz: 20 }) + run(c[1] || "", { sz: 20 }), { before: 80, after: 40, bidi: AR.test(c[1] || "") }) : "<w:p/>"}</w:tc>`;
-    return `<w:tbl><w:tblPr><w:tblW w:w="9600" w:type="dxa"/><w:tblBorders>${NIL}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="200" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="4700"/><w:gridCol w:w="4700"/></w:tblGrid>${rows.map((r) => `<w:tr>${tc(r[0])}${tc(r[1])}</w:tr>`).join("")}</w:tbl>`;
+    const cells = T.paperInfoCells(sel, exam, vals.DURATION, vals.TOTAL_MARKS), n = T.paperInfo(sel, exam).cols || 2, w = Math.floor(9600 / n), rows = [];
+    if (!cells.length) return para("");
+    for (let i = 0; i < cells.length; i += n) rows.push(cells.slice(i, i + n));
+    const tc = (c) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="4" w:space="0" w:color="999999"/></w:tcBorders></w:tcPr>${c ? para(run(`${c[0]}: `, { sz: 20 }) + run(c[1] || "", { sz: 20 }), { before: 80, after: 40, bidi: AR.test(c[1] || "") }) : "<w:p/>"}</w:tc>`;
+    return `<w:tbl><w:tblPr><w:tblW w:w="${w * n}" w:type="dxa"/><w:tblBorders>${NIL}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="200" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${Array.from({ length: n }, () => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.map((r) => `<w:tr>${Array.from({ length: n }, (_, i) => tc(r[i])).join("")}</w:tr>`).join("")}</w:tbl>`;
   }
   const instrXml = (sel, exam) => { const t = T.paperInfo(sel, exam).instructions.trim(); return t ? t.split(/\n/).map((l, i) => para((i === 0 ? run("Instructions: ", { b: true }) : "") + run(l), { before: i === 0 ? 120 : 0, bidi: AR.test(l) })).join("") : para(""); };
-  const extraXml = (sel, exam) => { const i = T.paperInfo(sel, exam), l = [...(i.date ? [["Date", i.date]] : []), ...i.lines]; return l.length ? l.map(([a, b]) => para(run(`${T.s(a).trim()}: `, { b: true }) + run(T.s(b).trim() || "........................"), { after: 40 })).join("") : para(""); };
+  const extraXml = (sel, exam) => { const i = T.paperInfo(sel, exam), l = i.lines; return l.length ? l.map(([a, b]) => para(run(`${T.s(a).trim()}: `, { b: true }) + run(T.s(b).trim() || "........................"), { after: 40 })).join("") : para(""); };
   async function buildDocx(sel, exam, key) {
     await T.importer.lib("jszip");
     const [, tpl] = pick("paper_templates", sel), hdr = T.paperHeaderOf(sel);
     const z = tpl ? await JSZip.loadAsync(b64ToBuf(tpl.b64)) : await builtinTemplate(!!hdr);
     const media = [], vals = values(sel, exam, key);
     const qx = await questionsXml(sel, exam, key, media);
-    const blocks = { QUESTIONS: qx, INFO_TABLE: infoTable(sel, exam, vals), INSTRUCTIONS_BLOCK: instrXml(sel, exam), EXTRA_INFO: extraXml(sel, exam), HEADER_PICTURE: hdr && !tpl ? para(await addPic(media, hdr, 17, 6), { jc: "center", after: 80 }) : para("") };
+    const W = { run, para, NIL, addPic: (img, w, h) => addPic(media, img, w, h) }, above = T.paperInfo(sel, exam).instrPos === "above";
+    const blocks = { QUESTIONS: qx, HEAD_BLOCK: T.paperHeadXml ? await T.paperHeadXml(sel, exam, key, vals, W) : para(""),
+      INFO_TABLE: above ? instrXml(sel, exam) + infoTable(sel, exam, vals) : infoTable(sel, exam, vals), INSTRUCTIONS_BLOCK: above ? para("") : instrXml(sel, exam), EXTRA_INFO: extraXml(sel, exam), HEADER_PICTURE: hdr && !tpl ? para(await addPic(media, hdr, 17, 6), { jc: "center", after: 80 }) : para("") };
     let doc = await z.file("word/document.xml").async("string");
     // the namespaces the questions and pictures need
     doc = doc.replace(/<w:document\b([^>]*)>/, (m, a) => `<w:document${a}${/xmlns:r=/.test(a) ? "" : ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'}${/xmlns:wp=/.test(a) ? "" : ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'}>`);
@@ -161,6 +158,7 @@
     return z.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
   T.bpPaperDocx = buildDocx;
+  T.paperValues = values;
 
   /* ---------------------------------------------------------------- a PDF or a picture: its header part */
   async function headerFromFile(f) {
@@ -192,29 +190,6 @@
   }
 
   /* ---------------------------------------------------------------- the box in "Print the exam" */
-  T.paperInfoHtml = function (sel, exam) {
-    const i = T.paperInfo(sel, exam), raw = ((S.data.paper_info || {})[infoKey(sel, exam)] || {}).lines || [];
-    const lines = Array.isArray(raw) && raw.length ? raw : [["", ""]];
-    return `<div class="sum-box pi-box"><h4>Information at the top of the paper</h4>
-      <p class="note">Student name, Student ID, Time allowed and Total marks are always printed. Add the exam date, instructions and any other line (for example Group, Section, Hall, Exam number). Leave a value empty to print a line the student fills in. Everything saves itself.</p>
-      <div class="grid g3">${T.field({ id: "pi-date", label: "Exam date", value: i.date, placeholder: "e.g. 15 January 2027 or Sunday 12/1/2027" })}</div>
-      ${T.field({ id: "pi-instr", label: "Instructions", textarea: true, rows: 2, value: i.instructions, placeholder: "e.g. Answer ALL the questions. Mobile phones are not allowed." })}
-      <div class="pi-lines">${lines.map((l, n) => `<div class="pi-row"><input type="text" class="cell ${T.s(l[0]) ? "filled" : ""}" data-pil="${n}" data-ref="pil:${n}" placeholder="Label, e.g. Group" value="${esc(T.s(l[0]))}"><input type="text" class="cell ${T.s(l[1]) ? "filled" : ""}" data-piv="${n}" data-ref="piv:${n}" placeholder="Value (empty = a line to fill in)" value="${esc(T.s(l[1]))}"><button class="btn sm" data-pix="${n}" title="Remove this line">✕</button></div>`).join("")}</div>
-      <div class="row-btns"><button class="btn sm" id="pi-add">+ Add a line</button></div></div>`;
-  };
-  T.paperInfoWire = function (sel, exam, el) {
-    const box = el.querySelector(".pi-box"); if (!box) return;
-    const all = dict("paper_info"), k = infoKey(sel, exam), cur = () => (all[k] = all[k] || { date: "", instructions: "", lines: [] });
-    const tidy = () => { const v = all[k]; if (v && !v.date && !v.instructions && !(v.lines || []).some((l) => T.s(l[0]) || T.s(l[1]))) delete all[k]; S.save(); };
-    const d = $("#pi-date", box), ins = $("#pi-instr", box);
-    d.oninput = () => { cur().date = d.value; T.markFilled(d); tidy(); };
-    ins.oninput = () => { cur().instructions = ins.value; T.markFilled(ins); T.autoGrow && T.autoGrow(ins); tidy(); };
-    const line = (n) => { const v = cur(); v.lines = Array.isArray(v.lines) ? v.lines : []; while (v.lines.length <= n) v.lines.push(["", ""]); return v.lines[n]; };
-    box.querySelectorAll("[data-pil]").forEach((x) => x.oninput = () => { line(+x.dataset.pil)[0] = x.value; T.markFilled(x); tidy(); });
-    box.querySelectorAll("[data-piv]").forEach((x) => x.oninput = () => { line(+x.dataset.piv)[1] = x.value; T.markFilled(x); tidy(); });
-    box.querySelectorAll("[data-pix]").forEach((b) => b.onclick = () => { const v = cur(); (v.lines = v.lines || []).splice(+b.dataset.pix, 1); tidy(); T.refresh("bpTab"); });
-    $("#pi-add", box).onclick = () => { const v = cur(); (v.lines = v.lines || []).push(["", ""]); S.save(); T.refresh("bpTab"); };
-  };
   T.paperTplHtml = function (sel, exam) {
     const [tk, tpl] = pick("paper_templates", sel), [hk, hdr] = pick("paper_header", sel);
     const scope = S.ui.tplScope === "*" ? "*" : "course";

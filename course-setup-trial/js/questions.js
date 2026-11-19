@@ -115,6 +115,7 @@
         <p class="note">The HTML file gives the best layout: open it in your browser and press Ctrl+P. "Print / save as PDF" opens the paper and the print window (choose "Save as PDF" there). The Word file opens in Microsoft Word and can be edited${(S.data.paper_templates || {})[sel] || (S.data.paper_templates || {})["*"] ? "; it uses your faculty's Word template" : ""}. Arabic text prints correctly in all three.</p>`
       : `<p class="note">${esc(exam)} has no questions yet. Add them in <b>Add questions</b>, then print the paper here.</p>`}
       ${T.paperInfoHtml ? T.paperInfoHtml(sel, exam) : ""}
+      ${T.paperLayoutHtml ? T.paperLayoutHtml(sel) : ""}
       ${T.paperTplHtml ? T.paperTplHtml(sel, exam) : ""}`;
     const body = sub === "bank" ? bankHtml : sub === "print" ? printHtml : sub === "reports" ? (T.bpDownloadsTab ? T.bpDownloadsTab(sel, exam) : "") : addHtml;
     return `${multiHtml}${bar}<div class="sub-body">${body}</div>`;
@@ -157,6 +158,7 @@
     $$("[data-pp]", el).forEach((b) => b.onclick = () => printPaper(sel, exam, b.dataset.pk === "1", b.dataset.pp));
     if (T.paperTplWire) T.paperTplWire(sel, exam, el);
     if (T.paperInfoWire) T.paperInfoWire(sel, exam, el);
+    if (T.paperLayoutWire) T.paperLayoutWire(sel, el);
     // delete + renumber
     const dels = $$("[data-qdel]", el), warn = $("#qdel-warn", el), okl = $("#qdel-ok-l", el);
     dels.forEach((c) => c.onchange = () => { const n = dels.filter((x) => x.checked).map((x) => x.dataset.qdel); warn.hidden = okl.hidden = !n.length;
@@ -232,9 +234,13 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
     const c = S.courseInfo(sel) || {}, ex = tbl("exams").find((x) => String(x.course_code) === String(sel) && T.s(x.assessment) === exam);
     const q = qOf(sel, exam), total = q.reduce((a, x) => a + (num(x.max_marks) || 0), 0), dur = ex && num(ex.duration_min) !== null ? `${g2(num(ex.duration_min))} minutes` : "";
     const hdr = T.paperHeaderOf ? T.paperHeaderOf(sel) : "";
-    const parts = [`<div class="head">${hdr ? `<img class="hdr" src="${esc(hdr)}" alt="">` : `<h1>${esc(c.department) || "Exam paper"}</h1>`}<h2>${esc(T.baseCode(c.course_code || sel))} - ${esc(c.course_name)}</h2><div class="sub">${esc(exam)} - ${esc(c.term)} ${esc(c.year)}${key ? '<span class="stamp">ANSWER KEY</span>' : ""}</div></div>`,
-      `<div class="info">${(T.paperInfoCells ? T.paperInfoCells(sel, exam, dur, g2(total)) : [["Student name", ""], ["Student ID", ""], ["Time allowed", dur], ["Total marks", g2(total)]]).map(([l, v]) => `<div>${esc(l)}: ${v ? `<b class="iv">${esc(v)}</b>` : ""}</div>`).join("")}</div>`
-      + (T.paperInfo && T.paperInfo(sel, exam).instructions.trim() ? `<div class="instr"><b>Instructions:</b> ${esc(T.paperInfo(sel, exam).instructions.trim()).replace(/\n/g, "<br>")}</div>` : "")];
+    const pinfo = T.paperInfo ? T.paperInfo(sel, exam) : { instructions: "", instrPos: "below", cols: 2 };
+    const instr = pinfo.instructions.trim() ? `<div class="instr"><b>Instructions:</b> ${esc(pinfo.instructions.trim()).replace(/\n/g, "<br>")}</div>` : "";
+    const head = T.paperHeadHtml ? `${hdr ? `<img class="hdr" src="${esc(hdr)}" alt="" style="display:block;width:100%;margin:0 0 8px">` : ""}${T.paperHeadHtml(sel, exam, key, T.paperValues(sel, exam, key))}`
+      : `<div class="head">${hdr ? `<img class="hdr" src="${esc(hdr)}" alt="">` : `<h1>${esc(c.department) || "Exam paper"}</h1>`}<h2>${esc(T.baseCode(c.course_code || sel))} - ${esc(c.course_name)}</h2><div class="sub">${esc(exam)} - ${esc(c.term)} ${esc(c.year)}${key ? '<span class="stamp">ANSWER KEY</span>' : ""}</div></div>`;
+    const parts = [head, (pinfo.instrPos === "above" ? instr : "") +
+      `<div class="info" style="grid-template-columns:repeat(${pinfo.cols || 2},1fr)">${(T.paperInfoCells ? T.paperInfoCells(sel, exam, dur, g2(total)) : [["Student name", ""], ["Student ID", ""], ["Time allowed", dur], ["Total marks", g2(total)]]).map(([l, v]) => `<div>${esc(l)}: ${v ? `<b class="iv">${esc(v)}</b>` : ""}</div>`).join("")}</div>`
+      + (pinfo.instrPos === "above" ? "" : instr)];
     let n = 0;
     Q_TYPES.forEach((t) => {
       const qs = q.filter((x) => T.s(x.question_type) === t); if (!qs.length) return;
@@ -268,7 +274,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#111;margin:0;backgrou
       other.forEach((r) => { n++; parts.push(`<div class="q"><div class="t"><span class="n">${n}.</span><span>${esc(r.question_id)} - ${esc(r.topic)}</span><span class="m">[${esc(fmtMarks(r.max_marks))}]</span></div></div>`); }); }
     if (!q.length) parts.push("<p>No questions have been added to this exam yet.</p>");
     const rtl = /[؀-ۿ]/.test(parts.join("")) ? ' dir="auto"' : "";
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(exam)} - ${key ? "answer key" : "exam paper"}</title><style>${PAPER_CSS}</style></head><body${rtl}><div class="paper">${parts.join("")}</div></body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(exam)} - ${key ? "answer key" : "exam paper"}</title><style>${PAPER_CSS}${T.paperCss ? T.paperCss(sel) : ""}</style></head><body${rtl}><div class="paper">${parts.join("")}</div></body></html>`;
   }
   const dl = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); };
   function printPaper(sel, exam, key, how) {
