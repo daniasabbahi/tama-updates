@@ -80,6 +80,8 @@
       jump: [["h-summ", "Summative"], ["h-form", "Formative"], ["h-plan", "Plan"], ["h-plsum", "Summaries"]] },
     "exam-blueprint": { name: "Blueprint for written exams", sub: "Choose a test, its timing and the weight of each question type, then how many MCQ, short essay and long essay questions each exam needs. Everything saves itself as you type.",
       jump: [["h-bpexam", "Test blueprint"], ["h-bpplan", "Types and weights"], ["h-bptab", "How many questions?"], ["h-bpeb", "Exam builder"]] },
+    "exam-results": { name: "Exam results", sub: "The item analysis of each test: difficulty, discrimination and distractors of every question, linked to the SLOs, and the results by SLO. Everything saves itself.",
+      jump: [["h-irtest", "Choose the test"], ["h-irmcq", "MCQ item analysis"], ["h-irslo", "Results by SLO"], ["h-irpart", "Partial marks"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -123,11 +125,12 @@
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint";
+    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results";
     $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW);
     if (T.page() === "assessment-plan") { T.renderPlanPage(c === NEW ? null : c); return; }
     if (T.page() === "exam-blueprint") { T.renderBlueprintPage(c === NEW ? null : c); return; }
+    if (T.page() === "exam-results") { T.renderResultsPage(c === NEW ? null : c); return; }
     if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>

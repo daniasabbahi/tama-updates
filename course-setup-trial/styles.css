@@ -521,3 +521,24 @@ body[data-page="exam-blueprint"] .bp-wrap { overflow-x: auto; }
 .qb-full { font-weight: 600; margin: 0 0 6px; } .qb-opts { margin: 0 0 6px 18px; padding: 0; } .qb-opts li.key { color: #0b6b3a; font-weight: 700; }
 .qb-pic { max-height: 140px; border: 1px solid var(--line); border-radius: 6px; } .qb-ia th { width: 46%; }
 @media (max-width: 760px) { .qb-det { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Exam results (item analysis) */
+.kcards.six { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: none; }
+.kcards.six .big { font-size: 22px; }
+@media (max-width: 1100px) { .kcards.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ir-kinds { gap: 18px; }
+.ir-fmt button { padding: 7px 12px; }
+.ir-tbl td.small, .ir-kpi td.small { font-size: 12px; }
+.ir-tbl input.cell, .ir-tbl select.cell { width: 100%; box-sizing: border-box; }
+.ir-tbl tr.lv-d td, .ir-legend .lv-d { background: #f6e3cf; }
+.ir-tbl tr.lv-a td, .ir-legend .lv-a { background: #e3f1e6; }
+.ir-tbl tr.lv-e td, .ir-legend .lv-e { background: #e3ecf8; }
+.ir-tbl .neg, .ir-legend .neg { color: #b45309; font-weight: 700; }
+.ir-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; font-size: 12px; }
+.ir-legend span { padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line); }
+td.kpi-below, .ir-legend .kpi-below { background: #fde7cf; color: #8a4b00; font-weight: 700; }
+td.kpi-on, .ir-legend .kpi-on { background: #d4f5d4; color: #1d5e20; font-weight: 700; }
+td.kpi-above, .ir-legend .kpi-above { background: #1e7b34; color: #fff; font-weight: 700; }
+.ir-how { margin: 6px 0; padding-left: 20px; font-size: 13px; }
+.ir-del { flex: 1; min-width: 260px; }
+#sec-irmcq > .fld { margin-bottom: 12px; }
