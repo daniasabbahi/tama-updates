@@ -450,15 +450,6 @@
     XLSX.writeFile(wb, `item_analysis_${nm.replace(/[^\w-]+/g, "_")}.xlsx`);
   }
 
-  /* ---------------------------------------------------------------- part 2 (partial marks) and part 3 (student marks): next steps */
-  T.sections.irPart = function () {
-    const sel = T.current(), el = $("#sec-irpart"); if (!el) return;
-    const exam = examOf(sel), on = exam && kindsOf(sel, exam).includes("partial");
-    el.hidden = !on; if (!on) { el.innerHTML = ""; return; }
-    el.innerHTML = `<div class="sec-head" id="h-irpart"><div><h2>Questions with partial marks</h2><p class="sub">For questions that are not right / wrong (essay, short answer, OSCE station ...): the pre-set KPI "X% of the students score Y% or more" is checked for each SLO / CLO.</p></div></div>
-      <div class="info-box"><span>This part is being rebuilt next. Until then it works as before in TAMA.</span></div>`;
-  };
-
   T.renderResultsPage = function (sel) {
     const content = $("#content");
     if (!sel) {

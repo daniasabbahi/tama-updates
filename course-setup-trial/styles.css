@@ -542,3 +542,15 @@ td.kpi-above, .ir-legend .kpi-above { background: #1e7b34; color: #fff; font-wei
 .ir-how { margin: 6px 0; padding-left: 20px; font-size: 13px; }
 .ir-del { flex: 1; min-width: 260px; }
 #sec-irmcq > .fld { margin-bottom: 12px; }
+
+/* ---------- marks grid and partial marks */
+.mg-tbl input.cell { width: 100%; box-sizing: border-box; }
+.mg-up { flex: 1; min-width: 280px; }
+.ip-q input.cell, .ip-q select.cell { width: 100%; box-sizing: border-box; }
+.ip-card { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 10px 0 14px; }
+.ip-card h4 { margin: 0 0 6px; color: var(--navy); font: 700 17px var(--serif); }
+.ip-info th { width: 42%; background: var(--cream-soft); font-size: 12.5px; }
+.ip-stu { max-height: 420px; overflow-y: auto; }
+@media (max-width: 900px) { .ip-card { grid-template-columns: minmax(0, 1fr); } }
+.x-btn { border: 1px solid var(--line); background: #fff; color: var(--soft); border-radius: 6px; width: 24px; height: 24px; line-height: 20px; padding: 0; cursor: pointer; font-size: 15px; }
+.x-btn:hover { border-color: var(--mauve); color: var(--mauve); }

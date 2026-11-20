@@ -604,5 +604,5 @@
     content.innerHTML = `<section class="card" id="sec-summ"></section><section class="card" id="sec-form"></section><section class="card" id="sec-plan"></section><section class="card" id="sec-plsum"></section>`;
     T.refresh("summative", "formative", "plan", "planSum");
   };
-  T.plan = { methods, methodKind, crStore, planRows, saveTicks, kindOf, gradingRows, ticked };
+  T.plan = { methods, methodKind, crStore, planRows, saveTicks, kindOf, gradingRows, ticked, courseAssessments };
 })();
