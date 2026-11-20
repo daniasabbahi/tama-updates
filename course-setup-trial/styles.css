@@ -554,3 +554,7 @@ td.kpi-above, .ir-legend .kpi-above { background: #1e7b34; color: #fff; font-wei
 @media (max-width: 900px) { .ip-card { grid-template-columns: minmax(0, 1fr); } }
 .x-btn { border: 1px solid var(--line); background: #fff; color: var(--soft); border-radius: 6px; width: 24px; height: 24px; line-height: 20px; padding: 0; cursor: pointer; font-size: 15px; }
 .x-btn:hover { border-color: var(--mauve); color: var(--mauve); }
+
+.xs-tbl input.cell, .xs-tbl select.cell { width: 100%; box-sizing: border-box; }
+.xs-msgs { line-height: 1.7; font-size: 13px; margin: 6px 0; }
+tr.sub-row td { color: var(--soft); font-size: 12.5px; background: var(--cream-soft); }

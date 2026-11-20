@@ -213,10 +213,10 @@
           <div class="row-btns ir-kinds"><label class="tick-line"><input type="checkbox" data-irk="mcq" ${kinds.includes("mcq") ? "checked" : ""}> ${esc(K_MCQ)}</label>
           <label class="tick-line"><input type="checkbox" data-irk="partial" ${kinds.includes("partial") ? "checked" : ""}> ${esc(K_PART)}</label></div></div>
         ${kinds.length ? (kinds.length === 2 ? `<p class="note">This test has both types: fill in both parts below. Both results go to CLO achievement.</p>` : "") : `<p class="warn-text">Tick the type of questions of this test to see the next step.</p>`}` : `<p class="note">Choose the test in <b>Step 1</b>. <b>Step 2</b> then asks the type of its questions: MCQ (the item analysis report), or questions with partial marks such as essay or OSCE (the KPI calculation).</p>`}`;
-    $("#ir-exam", el).onchange = (e) => { setExam(sel, e.target.value); T.refresh("irTest", "irMcq", "irPart"); };
+    $("#ir-exam", el).onchange = (e) => { setExam(sel, e.target.value); T.refresh("irTest", "irMcq", "irPart", "irMarks"); };
     $$("[data-irk]", el).forEach((c) => c.onchange = () => {
       const now = $$("[data-irk]", el).filter((x) => x.checked).map((x) => x.dataset.irk);
-      obj("ui_settings").ia_kinds[EK(sel, exam)] = ["mcq", "partial"].filter((x) => now.includes(x)); S.save(); T.refresh("irTest", "irMcq", "irPart");
+      obj("ui_settings").ia_kinds[EK(sel, exam)] = ["mcq", "partial"].filter((x) => now.includes(x)); S.save(); T.refresh("irTest", "irMcq", "irPart", "irMarks");
     });
   };
 
@@ -458,8 +458,8 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-irtest"></section><section class="card" id="sec-irmcq"></section><section class="card" id="sec-irslo"></section><section class="card" id="sec-irpart"></section>`;
-    T.refresh("irTest", "irMcq", "irPart");
+    content.innerHTML = `<section class="card" id="sec-irtest"></section><section class="card" id="sec-irmcq"></section><section class="card" id="sec-irslo"></section><section class="card" id="sec-irpart"></section><section class="card" id="sec-irmk"></section>`;
+    T.refresh("irTest", "irMcq", "irPart", "irMarks");
   };
   T.irParts = { parseCondensed, analyse, flagsOf, suggestOf, levelOf, byOutcome, savedItems, examsOf };
 })();

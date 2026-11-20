@@ -80,8 +80,8 @@
       jump: [["h-summ", "Summative"], ["h-form", "Formative"], ["h-plan", "Plan"], ["h-plsum", "Summaries"]] },
     "exam-blueprint": { name: "Blueprint for written exams", sub: "Choose a test, its timing and the weight of each question type, then how many MCQ, short essay and long essay questions each exam needs. Everything saves itself as you type.",
       jump: [["h-bpexam", "Test blueprint"], ["h-bpplan", "Types and weights"], ["h-bptab", "How many questions?"], ["h-bpeb", "Exam builder"]] },
-    "exam-results": { name: "Exam results", sub: "The item analysis of each test: difficulty, discrimination and distractors of every question, linked to the SLOs, and the results by SLO. Everything saves itself.",
-      jump: [["h-irtest", "Choose the test"], ["h-irmcq", "MCQ item analysis"], ["h-irslo", "Results by SLO"], ["h-irpart", "Partial marks"]] },
+    "exam-results": { name: "Exam results", sub: "The item analysis of each test (difficulty, discrimination and distractors of every question, linked to the SLOs), questions with partial marks, and the students' marks. Everything saves itself.",
+      jump: [["h-irtest", "Choose the test"], ["h-irmcq", "MCQ item analysis"], ["h-irslo", "Results by SLO"], ["h-irpart", "Partial marks"], ["h-irmk", "Student marks"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
