@@ -98,10 +98,9 @@
       <div class="row-btns"><button class="btn primary" id="qd-add">Add question</button></div>
       ${T.bpImportHtml ? T.bpImportHtml(sel, exam) : ""}`;
     const bankHtml = `<h3 class="qm-h">Question bank of this course</h3>
-      <p class="note">Every question you add or import is kept here, for all the exams of this course. The questions of ${esc(exam)} come first.</p>
+      <p class="note">Every question you add or import is kept here, for all the exams and years of this course. Search it, filter it, and see the item analysis of each question.</p>
       ${all.length ? `<div class="kcards four qm-k">${[["Total planned marks", g2(total)], ["Questions", all.length], ["Unmapped questions", all.filter((q) => !split(q.clos).length).length], [`Questions in ${exam}`, here.length]].map(([l, v]) => `<div class="kcard"><div class="lab">${esc(l)}</div><div class="big">${v}</div></div>`).join("")}</div>
-        <div class="bp-wrap"><table class="tbl sum-tbl qm-list"><thead><tr><th>Exam</th><th>ID</th><th>Type</th><th>Question</th><th class="num">Marks</th><th>Topic</th><th>Cognitive level</th><th>SLOs</th><th>CLOs</th><th>Picture</th></tr></thead>
-        <tbody>${all.slice().sort((a, b) => (T.s(a.assessment) === exam ? 0 : 1) - (T.s(b.assessment) === exam ? 0 : 1) || natKey(a.assessment).localeCompare(natKey(b.assessment)) || natKey(a.question_id).localeCompare(natKey(b.question_id))).map((q) => `<tr class="${T.s(q.assessment) === exam ? "" : "other"}"><td>${esc(q.assessment)}</td><td class="b">${esc(q.question_id)}</td><td>${esc(q.question_type)}</td><td class="wrap">${esc(T.s(q.question_text).slice(0, 160))}</td><td class="num">${esc(g2(num(q.max_marks)))}</td><td>${esc(q.topic)}</td><td>${esc(q.cognitive_level)}</td><td>${esc(q.slos)}</td><td>${esc(q.clos)}</td><td>${hasPic(q) ? "Yes" : ""}</td></tr>`).join("")}</tbody></table></div>
+        ${T.qBankFiltersHtml ? T.qBankFiltersHtml(sel, exam) : ""}
         <div class="row-btns"><button class="btn sm" id="qm-csv">Download blueprint CSV</button></div>
         ${here.length ? `<details class="sum-box"><summary>Delete questions of this exam</summary>
           <div class="chips">${here.map((q) => `<label class="chip"><input type="checkbox" data-qdel="${esc(q.question_id)}">${esc(q.question_id)}</label>`).join("")}</div>
@@ -158,6 +157,7 @@
     $$("[data-pp]", el).forEach((b) => b.onclick = () => printPaper(sel, exam, b.dataset.pk === "1", b.dataset.pp));
     if (T.paperTplWire) T.paperTplWire(sel, exam, el);
     if (T.paperInfoWire) T.paperInfoWire(sel, exam, el);
+    if (T.qBankWire) T.qBankWire(sel, exam, el);
     if (T.paperLayoutWire) T.paperLayoutWire(sel, el);
     // delete + renumber
     const dels = $$("[data-qdel]", el), warn = $("#qdel-warn", el), okl = $("#qdel-ok-l", el);
