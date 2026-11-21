@@ -571,3 +571,22 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .mg-tbl th.mg-grp { border-bottom: 1px solid var(--line); border-left: 2px solid var(--sand); text-align: center; }
 .mg-tbl th.mg-sub { font-weight: 500; font-size: 11.5px; }
 .mg-tbl th.mg-conv, .mg-tbl td.mg-conv { background: var(--mauve-tint); color: var(--navy); font-weight: 600; }
+
+/* paired marks table (Dania 2026-11-22: tidier) */
+.mg-tbl th, .mg-tbl td { vertical-align: middle; }
+.mg-tbl th.mg-grp { text-align: center; background: var(--navy); color: #fff; font-size: 13px; font-weight: 700; border-left: 3px solid #fff; padding: 7px 6px; border-bottom: 0; }
+.mg-tbl th.mg-sub { text-align: center; font-size: 12px; font-weight: 700; color: var(--navy); background: var(--cream); padding: 6px 4px; }
+.mg-tbl th.mg-conv { background: var(--mauve-tint); color: var(--mauve-dark); }
+.mg-tbl .mg-out { display: block; font-size: 11px; font-weight: 500; color: var(--soft); margin-top: 1px; }
+.mg-tbl th.mg-first, .mg-tbl td.mg-first { border-left: 3px solid #fff; box-shadow: inset 1px 0 0 var(--line); }
+.mg-tbl td.mg-first input.cell { text-align: center; }
+.mg-tbl td.mg-conv { background: var(--mauve-tint); color: var(--mauve-dark); font-weight: 700; text-align: center; font-size: 14px; }
+.mg-tbl th.mg-tot-h { text-align: center; background: var(--navy-soft); color: #fff; font-weight: 700; border-left: 3px solid #fff; }
+.mg-tbl th.mg-tot-h .mg-out { color: #d3deec; }
+.mg-tbl td.mg-tot { text-align: center; font-weight: 800; color: var(--navy); background: #e9f0fa; border-left: 3px solid #fff; font-size: 14px; }
+/* Dania 2026-11-22: centred text, no pink in the marks table */
+.mg-tbl th, .mg-tbl td { text-align: center !important; }
+.mg-tbl input.cell { text-align: center; }
+.mg-tbl th.mg-conv { background: var(--cream); color: var(--navy); }
+.mg-tbl td.mg-conv { background: var(--cream-soft); color: var(--navy); }
+.mg-tbl td.mg-tot { background: #eef3fa; }

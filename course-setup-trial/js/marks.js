@@ -80,14 +80,14 @@
     const { cols, rows, id } = o;
     if (!rows.length || rows.some((r) => clean(r.sid) || clean(r.nm)) && !rows.slice(-1).every((r) => !clean(r.sid) && !clean(r.nm))) rows.push(...Array.from({ length: rows.length ? 1 : 10 }, () => ({ sid: "", nm: "", v: {}, pm: {} })));
     const P = o.pair, rs = P ? ' rowspan="2"' : "";
-    const head = P ? `<tr><th style="width:36px"${rs}>#</th><th style="width:96px"${rs}>Student ID</th><th style="width:150px"${rs}>Student name</th>${cols.map(([q, mx, l]) => `<th class="ctr mg-grp" colspan="2">${esc(l || q)}</th>`).join("")}${o.calc ? `<th class="num" style="width:92px"${rs}>${esc(o.calc.label)}</th>` : ""}<th style="width:34px"${rs}></th></tr>
-      <tr>${cols.map((c, j) => `<th class="num mg-sub" style="width:82px">${esc(P.a(j))}</th><th class="num mg-sub mg-conv" style="width:82px">${esc(P.b(j))}</th>`).join("")}</tr>`
+    const head = P ? `<tr><th style="width:36px"${rs}>#</th><th style="width:96px"${rs}>Student ID</th><th style="width:150px"${rs}>Student name</th>${cols.map(([q, mx, l]) => `<th class="mg-grp" colspan="2">${esc(l || q)}</th>`).join("")}${o.calc ? `<th class="mg-tot-h" style="width:92px"${rs}>${esc(o.calc.label)}${o.calc.out !== undefined ? `<span class="mg-out">out of ${g2(o.calc.out)}</span>` : ""}</th>` : ""}<th style="width:34px"${rs}></th></tr>
+      <tr>${cols.map((c, j) => { const a = P.a(j), b = P.b(j); return `<th class="mg-sub mg-first" style="width:82px">${esc(a[0])}<span class="mg-out">out of ${g2(a[1])}</span></th><th class="mg-sub mg-conv" style="width:82px">${esc(b[0])}<span class="mg-out">out of ${g2(b[1])}</span></th>`; }).join("")}</tr>`
       : `<tr><th style="width:36px">#</th><th style="width:130px">Student ID</th><th style="width:200px">Student name</th>${cols.map(([q, mx, l]) => `<th class="num" style="width:96px">${esc(l || q)}${mx !== null && mx !== undefined && !isNaN(mx) ? ` <span class="muted">(out of ${g2(mx)})</span>` : ""}</th>`).join("")}${o.calc ? `<th class="num" style="width:110px">${esc(o.calc.label)}</th>` : ""}<th style="width:34px"></th></tr>`;
     const body = rows.map((r, i) => `<tr><td class="ro muted">${i + 1}</td>
       <td><input class="cell" data-mg="${id}" data-r="${i}" data-c="sid" data-ref="mg:${id}:${i}:sid" value="${esc(r.sid)}"></td>
       <td><input class="cell" data-mg="${id}" data-r="${i}" data-c="nm" data-ref="mg:${id}:${i}:nm" value="${esc(r.nm)}"></td>
-      ${cols.map(([q], j) => `<td><input class="cell num-in ${r.v[q] !== null && r.v[q] !== undefined ? "filled" : ""}" inputmode="decimal" data-mg="${id}" data-r="${i}" data-c="${j}" data-ref="mg:${id}:${i}:${j}" value="${esc(g2(r.v[q]))}"></td>${P ? `<td class="ro num mg-conv" data-mgpair="${i}:${j}">${esc(g2(P.f(j, r)))}</td>` : ""}`).join("")}
-      ${o.calc ? `<td class="ro num" data-mgcalc="${i}">${esc(g2(o.calc.f(r)))}</td>` : ""}
+      ${cols.map(([q], j) => `<td class="${P ? "mg-first" : ""}"><input class="cell num-in ${r.v[q] !== null && r.v[q] !== undefined ? "filled" : ""}" inputmode="decimal" data-mg="${id}" data-r="${i}" data-c="${j}" data-ref="mg:${id}:${i}:${j}" value="${esc(g2(r.v[q]))}"></td>${P ? `<td class="mg-conv" data-mgpair="${i}:${j}">${esc(g2(P.f(j, r)))}</td>` : ""}`).join("")}
+      ${o.calc ? `<td class="${P ? "mg-tot" : "ro num"}" data-mgcalc="${i}">${esc(g2(o.calc.f(r)))}</td>` : ""}
       <td class="ctr">${clean(r.sid) || clean(r.nm) ? `<button class="x-btn" data-mgx="${id}" data-r="${i}" title="Delete this student">×</button>` : ""}</td></tr>`).join("");
     return `<div class="bp-wrap" style="overflow-x:auto"><table class="tbl mg-tbl" style="min-width:${P ? 320 + cols.length * 164 + (o.calc ? 92 : 0) : 400 + (cols.length + (o.calc ? 1 : 0)) * 100}px">${head}<tbody>${body}</tbody></table></div>
       <div class="row-btns"><button class="btn sm" data-mgadd="${id}">+ Add 10 rows</button>
@@ -427,8 +427,8 @@
       const other = cur.filter((r) => (mode === "q" ? isTotLike(r) : !isTotLike(r)) && num(r.marks_awarded) !== null);
       const qids = mode === "q" ? qs.map((q) => q[0]) : byParts ? [...parts.map((p) => p.part), XM_TOTAL] : [XM_TOTAL];
       const cols = mode === "q" ? qs.map((q) => [q[0], q[1], q[0]]) : byParts ? parts.map((p) => [p.part, paperOf(p), p.part]) : [[XM_TOTAL, usePaper ? paper : (fullT > 0 ? fullT : null), usePaper ? "Total mark" : "Total mark"]];
-      const pair = byParts ? { f: (j, r) => convPart(parts[j], r.v[parts[j].part]), a: (j) => `On the paper (out of ${fx(paperOf(parts[j]))})`, b: (j) => `Grade (out of ${fx(num(parts[j].mark))})` }
-        : usePaper ? { f: (j, r) => conv(r.v[XM_TOTAL]), a: () => `On the paper (out of ${fx(paper)})`, b: () => `Grade (out of ${fx(fullT)})` } : null;
+      const pair = byParts ? { f: (j, r) => convPart(parts[j], r.v[parts[j].part]), a: (j) => ["On paper", paperOf(parts[j])], b: (j) => ["Grade", num(parts[j].mark)] }
+        : usePaper ? { f: (j, r) => conv(r.v[XM_TOTAL]), a: () => ["On paper", paper], b: () => ["Grade", fullT] } : null;
       const sig = `${mode}|${paper}|${fullT}|${qids.join("|")}|${JSON.stringify(parts)}|${JSON.stringify(ppt)}`;
       let g = grids[`mk|${ek}`];
       if (!g || g.sig !== sig) {
@@ -466,7 +466,7 @@
         ${other.length ? `<p class="warn-text">${esc(exam)} already has marks entered as <b>${mode === "q" ? MODES[1][1] : MODES[0][1]}</b> (${new Set(other.map((r) => T.s(r.student_id))).size} students). They will be replaced as soon as you type marks here.</p>` : ""}
         ${g.from ? `<p class="note">The ${g.rows.length} students come from ${esc(g.from)}. Add or delete rows as needed.</p>` : ""}
         ${byParts || usePaper ? `<div class="def-box"><b>Type the marks on the paper.</b> For each student, type the mark exactly as it was corrected on the paper${byParts ? " in the On the paper column of each sub-category" : ` (out of ${fx(paper)})`}. The shaded <b>Grade</b> column next to it shows what that mark is worth in the real grade${byParts ? `, and the <b>Total grade</b> (out of ${fx(fullT)}) adds them up` : ""}. Both are worked out for you.</div>` : ""}
-        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, pair, calc: byParts ? { label: `Total grade (out of ${fx(fullT)})`, f: partsSum } : null })}
+        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, pair, calc: byParts ? { label: "Total grade", out: fullT, f: partsSum } : null })}
         ${nS && fullT > 0 ? `<div class="kcards">${[["Students with marks", nS], ["Average mark", `${fx(avg)} <small>/ ${fx(fullT)}</small>`], ["Average (%)", `${fx(avgP)}%`]].map(([l, v]) => `<div class="kcard"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>
           ${clo.length ? `<h3 class="qm-h">These marks by CLO</h3><div class="bp-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>CLO</th><th class="num">Average share of the marks (%)</th></tr></thead><tbody>${clo.map(([c, v]) => `<tr><td><b>${esc(c)}</b></td><td class="num">${fx(v)}</td></tr>`).join("")}</tbody></table></div>`
             : cloIds ? `<div class="info-box"><span>No CLO is linked to these marks yet. ${mode === "q" ? "Link the questions to CLOs in the Exam builder." : `Tick <b>${esc(exam)}</b> for its CLOs on the Assessment plan page.`}</span></div>` : ""}` : ""}`;
