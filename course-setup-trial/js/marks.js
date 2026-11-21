@@ -395,7 +395,7 @@
   }
 
   T.sections.irMarks = function () {
-    const sel = T.current(), el = $("#sec-irmk"); if (!el) return;
+    const sel = T.current(), top = $("#sec-irmk"), el = $("#sec-xmenter"); if (!top || !el) return;
     const exam = T.s((S.ui.irExam || {})[sel]).trim(), ok = exam && T.irParts.examsOf(sel).includes(exam);
     const ca = cas(sel), done = marked(sel), full = fullMarks(sel);
     const probs = subProblems(sel), typed = subRows(sel);
@@ -465,24 +465,26 @@
         ${nS && fullT > 0 ? `<div class="kcards">${[["Students with marks", nS], ["Average mark", `${fx(avg)} <small>/ ${fx(fullT)}</small>`], ["Average (%)", `${fx(avgP)}%`]].map(([l, v]) => `<div class="kcard"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>
           ${clo.length ? `<h3 class="qm-h">These marks by CLO</h3><div class="bp-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>CLO</th><th class="num">Average share of the marks (%)</th></tr></thead><tbody>${clo.map(([c, v]) => `<tr><td><b>${esc(c)}</b></td><td class="num">${fx(v)}</td></tr>`).join("")}</tbody></table></div>`
             : cloIds ? `<div class="info-box"><span>No CLO is linked to these marks yet. ${mode === "q" ? "Link the questions to CLOs in the Exam builder." : `Tick <b>${esc(exam)}</b> for its CLOs on the Assessment plan page.`}</span></div>` : ""}` : ""}`;
-      el.innerHTML = head() + body; wirePick();
+      top.innerHTML = head(); el.innerHTML = pick() + body; wirePick();
       $$("[data-xmm]", el).forEach((b) => b.onclick = () => { ui().xm_mode[ek] = b.dataset.xmm; S.save(); T.refresh("irMarks"); });
       $$("[data-xpp]", el).forEach((f) => f.onchange = () => { const all = ui().xm_paper_parts = ui().xm_paper_parts || {}, o = all[ek] = all[ek] || {}, v = num(f.value); if (v && v > 0) o[f.dataset.xpp] = v; else o[f.dataset.xpp] = undefined; S.save(); T.refresh("irMarks"); });
       const pp = $("#xm-paper", el); if (pp) pp.onchange = () => { (ui().xm_paper = ui().xm_paper || {})[ek] = Math.max(0, num(pp.value) || 0); S.save(); T.refresh("irMarks"); };
       T.marksGridWire(el, { id: "xm", cols, rows: g.rows, file: `marks_${T.baseCode(sel)}_${exam}`, calc: usePaper ? { f: (r) => conv(r.v[XM_TOTAL]) } : byParts ? { f: partsSum } : null,
         onSave: (rows) => { T.marksSave(sel, exam, qids, byParts ? rows.map((r) => { const v = {}, pm = {}; parts.forEach((p) => { v[p.part] = convPart(p, r.v[p.part]); if (r.v[p.part] !== null && r.v[p.part] !== undefined) pm[p.part] = r.v[p.part]; }); v[XM_TOTAL] = partsSum(r); return { sid: r.sid, nm: r.nm, v, pm }; }) : usePaper ? rows.map((r) => ({ sid: r.sid, nm: r.nm, v: { [XM_TOTAL]: conv(r.v[XM_TOTAL]) }, pm: { [XM_TOTAL]: r.v[XM_TOTAL] } })) : rows, true); delete grids[ek]; later(); },
         redraw: () => T.refresh("irMarks") });
-      wireSubs(sel, el);
+      wireSubs(sel, top);
       return;
     }
-    el.innerHTML = head() + body; wireSubs(sel, el); wirePick();
+    top.innerHTML = head(); el.innerHTML = pick() + body; wireSubs(sel, top); wirePick();
     function wirePick() { $("#xm-exam", el).onchange = (e) => { S.ui.irExam = S.ui.irExam || {}; S.ui.irExam[sel] = e.target.value; S.saveUi(); T.refresh("irMarks"); }; }
     function head() {
       return `<div class="sec-head" id="h-irmk"><div><h2>Marks of each assessment</h2><p class="sub">A second way to measure CLO achievement: from the marks the students got, instead of the difficulty factor. The results show on the CLO achievement page in the student grades columns.</p></div></div>
         <h3 class="qm-h">Assessments of this course</h3><p class="note">All the assessments of the course and the full mark of each. The full marks come from the Assessment plan (change them there).</p>
         ${list}${ca.length && missing.length ? `<p class="warn-text"><b>${missing.length} of ${ca.length} assessments have no student marks yet:</b> ${missing.map(esc).join(", ")}. Choose one in the Test / assessment box below to enter its marks.</p>` : ca.length ? `<p class="ok-text">✓ Every assessment of ${esc(T.baseCode(sel))} has student marks.</p>` : `<p class="note">No assessments yet. Add them in the Assessment plan.</p>`}
-        ${noFull.length ? `<p class="note">No full mark yet for: ${noFull.map(esc).join(", ")}.</p>` : ""}${subsHtml(sel)}
-        <h3 class="qm-h" id="h-xmexam">Enter the marks of a test</h3>
+        ${noFull.length ? `<p class="note">No full mark yet for: ${noFull.map(esc).join(", ")}.</p>` : ""}${subsHtml(sel)}`;
+    }
+    function pick() {
+      return `<div class="sec-head" id="h-xmexam"><div><h2>Enter the marks of a test</h2><p class="sub">Choose the test or assessment, then type or paste each student's marks. The marks save themselves.</p></div></div>
         <div class="grid g3"><label class="fld ${ok ? "filled" : ""}" for="xm-exam"><span class="lbl">Test / assessment</span>
           <select id="xm-exam"><option value="" ${ok ? "" : "selected"}>Choose a test or assessment</option>${T.irParts.examsOf(sel).map((o) => `<option value="${esc(o)}" ${o === exam ? "selected" : ""}>${esc(o)}${done[o] ? " ✓" : ""}</option>`).join("")}</select></label></div>`;
     }
@@ -497,7 +499,7 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-irmk"></section>`;
+    content.innerHTML = `<section class="card" id="sec-irmk"></section><section class="card" id="sec-xmenter"></section>`;
     T.refresh("irMarks");
   };
 })();
