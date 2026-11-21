@@ -458,7 +458,7 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-irtest"></section><section class="card" id="sec-irmcq"></section><section class="card" id="sec-irslo"></section><section class="card" id="sec-irpart"></section><section class="card" id="sec-irmk"></section>`;
+    content.innerHTML = `<section class="card" id="sec-irtest"></section><section class="card" id="sec-irmcq"></section><section class="card" id="sec-irslo"></section><section class="card" id="sec-irpart"></section>`;
     T.refresh("irTest", "irMcq", "irPart", "irMarks");
   };
   T.irParts = { parseCondensed, analyse, flagsOf, suggestOf, levelOf, byOutcome, savedItems, examsOf };

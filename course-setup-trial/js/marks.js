@@ -223,7 +223,7 @@
       const qids = use.map((q) => q[0]), cols = use.map((q) => [q[0], q[1], q[0]]);
       const g = grids[ek] && grids[ek].sig === qids.join("|") ? grids[ek] : (grids[ek] = Object.assign({ sig: qids.join("|") }, T.marksRows(sel, exam, qids)));
       marksHtml = `<h3 class="qm-h">b) The students' marks in these questions</h3>
-        <p class="note">These are the same marks as in Student marks, so you type them once.${g.from ? ` The students come from ${esc(g.from)}; add or delete rows as needed.` : ""}</p>
+        <p class="note">These are the same marks as on the Student marks page, so you type them once.${g.from ? ` The students come from ${esc(g.from)}; add or delete rows as needed.` : ""}</p>
         ${T.marksGridHtml({ id: "ip", cols, rows: g.rows })}`;
       const res = outcomeResults(sel, exam);
       const stmt = {}; tbl("clos").filter((r) => sameC(r, sel)).forEach((r) => { stmt[T.s(r.clo_id)] = T.s(r.clo_text); }); tbl("slos").filter((r) => sameC(r, sel)).forEach((r) => { stmt[T.s(r.slo_id)] = T.s(r.slo_text); });
@@ -351,7 +351,7 @@
       else msgs.push(`${lab} of ${fx(M)} marks <span class="ok-text">✓</span>`);
     });
     return `<details class="sum-box" ${S.ui.xmSubOpen ? "open" : ""} id="xs-box"><summary>Sub-categories of the assessments (optional)${Object.keys(subProblems(sel)).length ? ' <span class="alert-chip">⚠ Check the marks</span>' : ""}</summary>
-      <p class="note">Split any assessment into sub-categories, each with its own mark (e.g. Portfolio → Written report 12, Oral defence 8). Type each mark as a number or as a percentage of the assessment (e.g. 40%). The marks of the sub-categories must add up to the full mark of the assessment (from Assessment plan). The marks of each sub-category are then entered separately below. For a test, the type of questions is used in Step 2 above. Saved by itself.</p>
+      <p class="note">Split any assessment into sub-categories, each with its own mark (e.g. Portfolio → Written report 12, Oral defence 8). Type each mark as a number or as a percentage of the assessment (e.g. 40%). The marks of the sub-categories must add up to the full mark of the assessment (from Assessment plan). The marks of each sub-category are then entered separately below. For a test, the type of questions is used in Exam results, Step 2. Saved by itself.</p>
       ${mains.length ? `<div class="bp-wrap"><table class="tbl xs-tbl"><thead><tr><th>Main assessment</th><th>Sub-category</th><th>Type of questions</th><th class="num" style="width:90px">Mark <i class="hint" title="Type the mark (e.g. 4) or the percentage of the assessment (e.g. 40%).">?</i></th><th class="num" style="width:100px">% of the assessment</th><th class="num" style="width:120px">Weight in the course grade <i class="hint" title="Mark of the sub-category ÷ total marks of the course (e.g. 12 of 100 = 12%).">?</i></th><th style="width:34px"></th></tr></thead><tbody>
         ${rows.map((r, i) => `<tr><td>${sel1(r.Assessment, opts, "data-xsa", i)}</td><td><input class="cell" data-xs="${i}" data-c="Sub-category" data-ref="xs:${i}:s" value="${esc(r["Sub-category"])}" placeholder="e.g. Written report, MCQ part"></td>
           <td>${sel1(r.Type, Object.keys(SUB_KINDS), "data-xst", i)}</td><td><input class="cell num-in" inputmode="decimal" data-xs="${i}" data-c="Mark" data-ref="xs:${i}:m" value="${esc(r.Mark)}"></td>
@@ -406,7 +406,7 @@
             + `<tr class="sub-bad"><td colspan="5"><div class="alert-box"><span class="alert-ic">⚠</span><span><b>${esc(r.assessment)}:</b> ${esc(probs[r.assessment])}.</span></div></td></tr>`
           : partsOf(sel, r.assessment).map((p) => `<tr class="sub-row"><td>&nbsp;&nbsp;↳ ${esc(p.part)}</td><td>${esc(SUB_INV[p.kind] || "")}</td><td></td><td class="num">${fx(p.mark)}</td><td></td></tr>`).join(""))).join("")}</tbody></table></div>` : "";
     const missing = ca.map((r) => r.assessment).filter((a) => !done[a]), noFull = ca.filter((r) => num(r.full_grade) === null).map((r) => r.assessment);
-    let body = `<p class="note">Choose the test in <b>Step 1</b> at the top of the page to enter its student marks.</p>`;
+    let body = `<p class="note">Choose the test or assessment in the box above to enter its student marks.</p>`;
     if (ok) {
       const ek = EK(sel, exam), qs = examQuestions(sel, exam), cur = marksOf(sel, exam);
       const isTot = (r) => T.s(r.question_id).toUpperCase() === XM_TOTAL;
@@ -465,7 +465,7 @@
         ${nS && fullT > 0 ? `<div class="kcards">${[["Students with marks", nS], ["Average mark", `${fx(avg)} <small>/ ${fx(fullT)}</small>`], ["Average (%)", `${fx(avgP)}%`]].map(([l, v]) => `<div class="kcard"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>
           ${clo.length ? `<h3 class="qm-h">These marks by CLO</h3><div class="bp-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>CLO</th><th class="num">Average share of the marks (%)</th></tr></thead><tbody>${clo.map(([c, v]) => `<tr><td><b>${esc(c)}</b></td><td class="num">${fx(v)}</td></tr>`).join("")}</tbody></table></div>`
             : cloIds ? `<div class="info-box"><span>No CLO is linked to these marks yet. ${mode === "q" ? "Link the questions to CLOs in the Exam builder." : `Tick <b>${esc(exam)}</b> for its CLOs on the Assessment plan page.`}</span></div>` : ""}` : ""}`;
-      el.innerHTML = head() + body;
+      el.innerHTML = head() + body; wirePick();
       $$("[data-xmm]", el).forEach((b) => b.onclick = () => { ui().xm_mode[ek] = b.dataset.xmm; S.save(); T.refresh("irMarks"); });
       $$("[data-xpp]", el).forEach((f) => f.onchange = () => { const all = ui().xm_paper_parts = ui().xm_paper_parts || {}, o = all[ek] = all[ek] || {}, v = num(f.value); if (v && v > 0) o[f.dataset.xpp] = v; else o[f.dataset.xpp] = undefined; S.save(); T.refresh("irMarks"); });
       const pp = $("#xm-paper", el); if (pp) pp.onchange = () => { (ui().xm_paper = ui().xm_paper || {})[ek] = Math.max(0, num(pp.value) || 0); S.save(); T.refresh("irMarks"); };
@@ -475,14 +475,29 @@
       wireSubs(sel, el);
       return;
     }
-    el.innerHTML = head() + body; wireSubs(sel, el);
+    el.innerHTML = head() + body; wireSubs(sel, el); wirePick();
+    function wirePick() { $("#xm-exam", el).onchange = (e) => { S.ui.irExam = S.ui.irExam || {}; S.ui.irExam[sel] = e.target.value; S.saveUi(); T.refresh("irMarks"); }; }
     function head() {
-      return `<div class="sec-head" id="h-irmk"><div><h2>Student marks</h2><p class="sub">A second way to measure CLO achievement: from the marks the students got, instead of the difficulty factor. The results show on the CLO achievement page in the student grades columns.</p></div></div>
+      return `<div class="sec-head" id="h-irmk"><div><h2>Marks of each assessment</h2><p class="sub">A second way to measure CLO achievement: from the marks the students got, instead of the difficulty factor. The results show on the CLO achievement page in the student grades columns.</p></div></div>
         <h3 class="qm-h">Assessments of this course</h3><p class="note">All the assessments of the course and the full mark of each. The full marks come from the Assessment plan (change them there).</p>
-        ${list}${ca.length && missing.length ? `<p class="warn-text"><b>${missing.length} of ${ca.length} assessments have no student marks yet:</b> ${missing.map(esc).join(", ")}. Choose one in Step 1 at the top of the page to enter its marks.</p>` : ca.length ? `<p class="ok-text">✓ Every assessment of ${esc(T.baseCode(sel))} has student marks.</p>` : `<p class="note">No assessments yet. Add them in the Assessment plan.</p>`}
-        ${noFull.length ? `<p class="note">No full mark yet for: ${noFull.map(esc).join(", ")}.</p>` : ""}${subsHtml(sel)}`;
+        ${list}${ca.length && missing.length ? `<p class="warn-text"><b>${missing.length} of ${ca.length} assessments have no student marks yet:</b> ${missing.map(esc).join(", ")}. Choose one in the Test / assessment box below to enter its marks.</p>` : ca.length ? `<p class="ok-text">✓ Every assessment of ${esc(T.baseCode(sel))} has student marks.</p>` : `<p class="note">No assessments yet. Add them in the Assessment plan.</p>`}
+        ${noFull.length ? `<p class="note">No full mark yet for: ${noFull.map(esc).join(", ")}.</p>` : ""}${subsHtml(sel)}
+        <h3 class="qm-h" id="h-xmexam">Enter the marks of a test</h3>
+        <div class="grid g3"><label class="fld ${ok ? "filled" : ""}" for="xm-exam"><span class="lbl">Test / assessment</span>
+          <select id="xm-exam"><option value="" ${ok ? "" : "selected"}>Choose a test or assessment</option>${T.irParts.examsOf(sel).map((o) => `<option value="${esc(o)}" ${o === exam ? "selected" : ""}>${esc(o)}${done[o] ? " ✓" : ""}</option>`).join("")}</select></label></div>`;
     }
   };
 
   T.marksParts = { readUpload, outcomeResults, kpiOf };
+  T.renderMarksPage = function (sel) {
+    const content = $("#content");
+    if (!sel) {
+      content.innerHTML = `<div class="empty-state"><div class="empty-icon">📝</div><h3>${S.t("courses").length ? "Choose the course you want to work on" : "No courses yet"}</h3>
+        <p>${S.t("courses").length ? "Pick it in the Course box above." : "The student marks fill in as soon as you have saved at least one course in Course setup."}</p>
+        <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
+      return;
+    }
+    content.innerHTML = `<section class="card" id="sec-irmk"></section>`;
+    T.refresh("irMarks");
+  };
 })();
