@@ -227,9 +227,9 @@
         ${T.marksGridHtml({ id: "ip", cols, rows: g.rows })}`;
       const res = outcomeResults(sel, exam);
       const stmt = {}; tbl("clos").filter((r) => sameC(r, sel)).forEach((r) => { stmt[T.s(r.clo_id)] = T.s(r.clo_text); }); tbl("slos").filter((r) => sameC(r, sel)).forEach((r) => { stmt[T.s(r.slo_id)] = T.s(r.slo_text); });
-      const typ = ((T.plan && T.plan.courseAssessments ? T.plan.courseAssessments(sel) : []).find((r) => r.assessment === exam) || {}).type || "";
+      const typ = (cas(sel).find((r) => r.assessment === exam) || {}).type || "";
       const names = {}; marksOf(sel, exam).forEach((r) => { if (clean(r.student_name)) names[T.s(r.student_id)] = clean(r.student_name); });
-      resHtml = `<h3 class="qm-h">c) The KPI of each SLO / CLO <span class="muted" style="font-weight:400">(as in the Excel sheet "<bdi>تحديد مؤشر الآداء</bdi>")</span></h3>` + (!res.length
+      resHtml = `<h3 class="qm-h">c) The KPI of each SLO / CLO</h3>` + (!res.length
         ? `<p class="note">The calculation appears when the questions above are linked to an SLO / CLO, have a full mark, and have students' marks.</p>`
         : res.map((r) => { const ids = Object.keys(r.pct);
           return `<div class="ip-card"><div class="ip-left"><h4>${esc(r.oid)}</h4>
@@ -268,7 +268,17 @@
   const SUB_KINDS = { "MCQ (right / wrong)": "mcq", "Partial marks (essay, short answer, OSCE ...)": "partial" };
   const SUB_INV = { mcq: "MCQ (right / wrong)", partial: "Partial marks (essay, short answer, OSCE ...)" };
   const fx = (v) => (v === null || v === undefined ? "" : String(Math.round(v * 100) / 100));
-  const cas = (sel) => (T.plan && T.plan.courseAssessments ? T.plan.courseAssessments(sel) : []);
+  /** The course's assessments with their full marks: the Mark of the Summative table (Assessment plan) first, as TAMA, then the rest. */
+  const cas = (sel) => {
+    const old = T.plan && T.plan.courseAssessments ? T.plan.courseAssessments(sel) : [], out = [];
+    (T.plan && T.plan.gradingRows ? T.plan.gradingRows(sel) : []).forEach((r) => {
+      const a = T.s(r.Assessment).trim(); if (!a || out.some((x) => x.assessment.toUpperCase() === a.toUpperCase())) return;
+      const o = old.find((x) => x.assessment.toUpperCase() === a.toUpperCase()) || {};
+      out.push({ assessment: a, type: o.type || (T.s(r.Method) === "Test-based assessment" ? "Written exam" : T.s(r.Method)), full_grade: num(r.Mark) !== null ? num(r.Mark) : num(o.full_grade) });
+    });
+    old.forEach((o) => { if (!out.some((x) => x.assessment.toUpperCase() === T.s(o.assessment).toUpperCase())) out.push(o); });
+    return out;
+  };
   function fullMarks(sel) { const out = {}; cas(sel).forEach((r) => { if (!(r.assessment in out)) out[r.assessment] = num(r.full_grade); }); return out; }
   function marked(sel) {
     const out = {};
@@ -328,12 +338,13 @@
       else msgs.push(`${lab} of ${fx(M)} marks <span class="ok-text">✓</span>`);
     });
     return `<details class="sum-box" ${S.ui.xmSubOpen ? "open" : ""} id="xs-box"><summary>Sub-categories of the assessments (optional)</summary>
-      <p class="note">Split any assessment into sub-categories, each with its own mark (e.g. Portfolio → Written report 12, Oral defence 8). The marks of the sub-categories must add up to the full mark of the assessment (from Assessment plan). For a test, the type of questions is used in Step 2 above. Saved by itself.</p>
-      ${mains.length ? `<div class="bp-wrap"><table class="tbl xs-tbl"><thead><tr><th>Main assessment</th><th>Sub-category</th><th>Type of questions</th><th class="num" style="width:90px">Mark</th><th class="num" style="width:110px">Weight (calculated)</th><th style="width:34px"></th></tr></thead><tbody>
+      <p class="note">Split any assessment into sub-categories, each with its own mark (e.g. Portfolio → Written report 12, Oral defence 8). Type each mark as a number or as a percentage of the assessment (e.g. 40%). The marks of the sub-categories must add up to the full mark of the assessment (from Assessment plan). The marks of each sub-category are then entered separately below. For a test, the type of questions is used in Step 2 above. Saved by itself.</p>
+      ${mains.length ? `<div class="bp-wrap"><table class="tbl xs-tbl"><thead><tr><th>Main assessment</th><th>Sub-category</th><th>Type of questions</th><th class="num" style="width:90px">Mark <i class="hint" title="Type the mark (e.g. 4) or the percentage of the assessment (e.g. 40%).">?</i></th><th class="num" style="width:100px">% of the assessment</th><th class="num" style="width:110px">Weight (calculated)</th><th style="width:34px"></th></tr></thead><tbody>
         ${rows.map((r, i) => `<tr><td>${sel1(r.Assessment, opts, "data-xsa", i)}</td><td><input class="cell" data-xs="${i}" data-c="Sub-category" data-ref="xs:${i}:s" value="${esc(r["Sub-category"])}" placeholder="e.g. Written report, MCQ part"></td>
           <td>${sel1(r.Type, Object.keys(SUB_KINDS), "data-xst", i)}</td><td><input class="cell num-in" inputmode="decimal" data-xs="${i}" data-c="Mark" data-ref="xs:${i}:m" value="${esc(r.Mark)}"></td>
+          <td class="ro num">${num(r.Mark) !== null && full[r.Assessment] ? `${fx(num(r.Mark) / full[r.Assessment] * 100)}%` : ""}</td>
           <td class="ro num">${num(r.Mark) !== null && tot ? `${fx(num(r.Mark) / tot * 100)}%` : ""}</td><td class="ctr"><button class="x-btn" data-xsx="${i}" title="Delete this row">×</button></td></tr>`).join("")}
-        <tr><td colspan="6"><button class="btn sm" id="xs-add">+ Add a sub-category</button></td></tr></tbody></table></div>
+        <tr><td colspan="7"><button class="btn sm" id="xs-add">+ Add a sub-category</button></td></tr></tbody></table></div>
         ${msgs.length ? `<div class="xs-msgs">${msgs.join("<br>")}</div>` : ""}` : `<p class="note">Type the assessments in the Assessment plan first; then you can split them into sub-categories here.</p>`}</details>`;
   }
   function wireSubs(sel, el) {
@@ -342,7 +353,9 @@
     const put = () => { subStore(sel, rows); redo(); };
     $$("[data-xsa]", el).forEach((s) => s.onchange = () => { rows[+s.dataset.xsa].Assessment = s.value; put(); });
     $$("[data-xst]", el).forEach((s) => s.onchange = () => { rows[+s.dataset.xst].Type = s.value; put(); });
-    $$("[data-xs]", el).forEach((f) => f.onchange = () => { let v = clean(f.value); if (f.dataset.c === "Sub-category" && v) v = v[0].toUpperCase() + v.slice(1); rows[+f.dataset.xs][f.dataset.c] = v; put(); });
+    $$("[data-xs]", el).forEach((f) => f.onchange = () => { let v = clean(f.value); if (f.dataset.c === "Sub-category" && v) v = v[0].toUpperCase() + v.slice(1); const r = rows[+f.dataset.xs];
+      if (f.dataset.c === "Mark" && /%\s*$/.test(v)) { const fm = fullMarks(sel)[r.Assessment], pc = num(v.replace("%", "")); if (fm && pc !== null) v = fx(fm * pc / 100); else { T.toast("Choose the main assessment (with its full mark) first, then type the percentage."); v = ""; } }
+      r[f.dataset.c] = v; put(); });
     $$("[data-xsx]", el).forEach((b) => b.onclick = () => { rows.splice(+b.dataset.xsx, 1); put(); });
     const add = $("#xs-add", el); if (add) add.onclick = () => { rows.push({ Assessment: "", "Sub-category": "", Type: "", Mark: "" }); (ui().xm_sub_rows = ui().xm_sub_rows || {})[String(sel)] = rows; S.save(); redo(); };
   }
@@ -383,24 +396,31 @@
       const isTot = (r) => T.s(r.question_id).toUpperCase() === XM_TOTAL;
       const MODES = [["q", "Mark of each question"], ["total", "Total mark of the test only"]];
       let mode = "total";
-      if (qs.length) { const xm = ui().xm_mode = ui().xm_mode || {}; mode = xm[ek] || (cur.some(isTot) && !cur.some((r) => !isTot(r)) ? "total" : "q"); if (xm[ek] !== mode) { xm[ek] = mode; S.save(); } }
+      if (qs.length) { const xm = ui().xm_mode = ui().xm_mode || {}; const pn = new Set(partsOf(sel, exam).map((p) => T.s(p.part))); mode = xm[ek] || (cur.some(isTot) && !cur.some((r) => !isTot(r) && !pn.has(T.s(r.question_id))) ? "total" : "q"); if (xm[ek] !== mode) { xm[ek] = mode; S.save(); } }
       const fullT = mode === "q" ? qs.reduce((a, q) => a + (q[1] || 0), 0) : (full[exam] || 0);
-      const paper = mode === "total" ? (num((ui().xm_paper || {})[ek]) || 0) : 0, usePaper = mode === "total" && paper > 0 && fullT > 0;
-      const other = cur.filter((r) => (mode === "q" ? isTot(r) : !isTot(r)) && num(r.marks_awarded) !== null);
-      const qids = mode === "q" ? qs.map((q) => q[0]) : [XM_TOTAL];
-      const cols = mode === "q" ? qs.map((q) => [q[0], q[1], q[0]]) : [[XM_TOTAL, usePaper ? paper : (fullT > 0 ? fullT : null), usePaper ? "Mark on the paper" : "Total mark"]];
-      const sig = `${mode}|${paper}|${fullT}|${qids.join("|")}`;
+      const parts = mode === "total" ? partsOf(sel, exam).filter((p) => p.part && num(p.mark) !== null) : [], byParts = parts.length > 0;
+      const ppt = ((ui().xm_paper_parts = ui().xm_paper_parts || {})[ek]) || {};
+      const paperOf = (p) => (num(ppt[p.part]) > 0 ? num(ppt[p.part]) : num(p.mark));
+      const convPart = (p, v) => (v === null || v === undefined ? null : paperOf(p) > 0 ? Math.round(Math.min(Math.max(v, 0), paperOf(p)) * num(p.mark) / paperOf(p) * 100) / 100 : v);
+      const partsSum = (r) => { let t = null; parts.forEach((p) => { const c = convPart(p, r.v[p.part]); if (c !== null) t = (t || 0) + c; }); return t === null ? null : Math.round(t * 100) / 100; };
+      const paper = mode === "total" && !byParts ? (num((ui().xm_paper || {})[ek]) || 0) : 0, usePaper = mode === "total" && !byParts && paper > 0 && fullT > 0;
+      const partNames = new Set(partsOf(sel, exam).map((p) => T.s(p.part))), isTotLike = (r) => isTot(r) || partNames.has(T.s(r.question_id));
+      const other = cur.filter((r) => (mode === "q" ? isTotLike(r) : !isTotLike(r)) && num(r.marks_awarded) !== null);
+      const qids = mode === "q" ? qs.map((q) => q[0]) : byParts ? [...parts.map((p) => p.part), XM_TOTAL] : [XM_TOTAL];
+      const cols = mode === "q" ? qs.map((q) => [q[0], q[1], q[0]]) : byParts ? parts.map((p) => [p.part, paperOf(p), paperOf(p) !== num(p.mark) ? `${p.part} on the paper` : p.part]) : [[XM_TOTAL, usePaper ? paper : (fullT > 0 ? fullT : null), usePaper ? "Mark on the paper" : "Total mark"]];
+      const sig = `${mode}|${paper}|${fullT}|${qids.join("|")}|${JSON.stringify(parts)}|${JSON.stringify(ppt)}`;
       let g = grids[`mk|${ek}`];
       if (!g || g.sig !== sig) {
         const r = T.marksRows(sel, exam, qids);
         if (!r.rows.length) { const rec = (S.data.mark_sheets || {})[String(sel)]; if (rec && Array.isArray(rec.rows)) { r.rows = rec.rows.filter((x) => !x.withdrawn).map((x) => ({ sid: T.s(x.computer_no), nm: T.s(x.name), v: {}, pm: {} })).filter((x) => x.sid || x.nm); if (r.rows.length) r.from = "the course mark sheet"; } }
+        if (byParts) r.rows.forEach((x) => { parts.forEach((p) => { const t = x.v[p.part]; x.v[p.part] = x.pm[p.part] !== undefined && x.pm[p.part] !== null ? x.pm[p.part] : (t === null || t === undefined ? null : Math.round(t * paperOf(p) / num(p.mark) * 100) / 100); }); x.v[XM_TOTAL] = undefined; });
         if (usePaper) r.rows.forEach((x) => { const t = x.v[XM_TOTAL]; x.v[XM_TOTAL] = x.pm[XM_TOTAL] !== undefined && x.pm[XM_TOTAL] !== null ? x.pm[XM_TOTAL] : (t === null || t === undefined ? null : Math.round(t * paper / fullT * 100) / 100); });
         g = grids[`mk|${ek}`] = Object.assign({ sig }, r);
       }
       const conv = (pm) => (pm === null || pm === undefined ? null : Math.round(Math.min(Math.max(pm, 0), paper) * fullT / paper * 100) / 100);
       // summary of the saved marks
-      const long = marksOf(sel, exam).filter((r) => qids.includes(T.s(r.question_id)) && num(r.marks_awarded) !== null);
-      const caps = Object.fromEntries(cols.map((c) => [c[0], mode === "q" ? c[1] : fullT]));
+      const long = marksOf(sel, exam).filter((r) => (byParts ? [XM_TOTAL] : qids).includes(T.s(r.question_id)) && num(r.marks_awarded) !== null);
+      const caps = byParts ? { [XM_TOTAL]: fullT } : Object.fromEntries(cols.map((c) => [c[0], mode === "q" ? c[1] : fullT]));
       const totBy = {}, clipBy = {};
       long.forEach((r) => { const s = T.s(r.student_id), v = num(r.marks_awarded), cap = caps[T.s(r.question_id)]; totBy[s] = (totBy[s] || 0) + v; clipBy[s] = (clipBy[s] || 0) + Math.min(Math.max(v, 0), cap === null || cap === undefined ? v : cap); });
       const nS = Object.keys(totBy).length, avg = nS ? Object.values(totBy).reduce((a, b) => a + b, 0) / nS : null, avgP = nS && fullT > 0 ? Object.values(clipBy).reduce((a, b) => a + b, 0) / nS / fullT * 100 : null;
@@ -408,24 +428,31 @@
       body = `<h3 class="qm-h">Student marks in ${esc(exam)}</h3>
         ${qs.length ? `<div class="fld"><span class="lbl">How do you want to enter the marks? <i class="hint" title="Each question: the CLOs and SLOs of each question come from the Exam builder. Total only: the CLOs and SLOs come from the ticks on the Assessment plan page.">?</i></span>
           <div class="seg">${MODES.map(([v, l]) => `<button class="${mode === v ? "on" : ""}" data-xmm="${v}">${l}</button>`).join("")}</div></div>`
-          : `<p class="note">${esc(exam)} has no questions in the Exam builder, so you enter one total mark per student. To enter the mark of each question, add its questions in Blueprint and Exam builder first.</p>`}
+          : `<p class="note">${esc(exam)} has no questions in the Exam builder, so you enter ${byParts ? "the mark of each sub-category" : "one total mark"} per student. To enter the mark of each question, add its questions in Blueprint and Exam builder first.</p>`}
         ${mode === "q" ? `<p class="note">The CLOs and SLOs of each question come from the Exam builder.</p>`
           : `<div class="grid g3"><div class="kcard bp-actual"><div class="lab">Full mark of this test</div><div class="big">${fullT > 0 ? fx(fullT) : "-"}</div></div>
-            <label class="fld ${paper ? "filled" : ""}" for="xm-paper"><span class="lbl">Total mark on the paper <i class="hint" title="If the test was corrected out of another total (e.g. 65), type it here. You then type each student's mark on the paper and it is converted to the full mark (mark × full mark ÷ paper total). Leave 0 if not.">?</i></span><input type="text" inputmode="decimal" id="xm-paper" value="${esc(fx(paper))}"></label></div>
+            ${byParts ? "" : `<label class="fld ${paper ? "filled" : ""}" for="xm-paper"><span class="lbl">Total mark on the paper <i class="hint" title="If the test was corrected out of another total (e.g. 65), type it here. You then type each student's mark on the paper and it is converted to the full mark (mark × full mark ÷ paper total). Leave 0 if not.">?</i></span><input type="text" inputmode="decimal" id="xm-paper" value="${esc(fx(paper))}"></label>`}</div>
+            ${byParts ? `<h3 class="qm-h">Marks of each sub-category</h3><p class="note">${esc(exam)} has sub-categories, so each one gets its own column below. If a sub-category was marked on the paper out of another number, type that number; the mark is converted to its allocated mark (mark on the paper × allocated mark ÷ total on the paper).</p>
+              <div class="bp-wrap"><table class="tbl" style="max-width:760px"><thead><tr><th>Sub-category</th><th class="num">Allocated mark</th><th class="num">% of the test</th><th class="num" style="width:140px">Total on the paper</th><th class="num">Conversion factor</th></tr></thead><tbody>
+              ${parts.map((p) => `<tr><td><b>${esc(p.part)}</b></td><td class="num">${fx(num(p.mark))}</td><td class="num">${fullT > 0 ? `${fx(num(p.mark) / fullT * 100)}%` : ""}</td>
+                <td><input class="cell num-in ${num(ppt[p.part]) > 0 ? "filled" : ""}" inputmode="decimal" data-xpp="${esc(p.part)}" data-ref="xpp:${esc(p.part)}" value="${esc(num(ppt[p.part]) > 0 ? fx(num(ppt[p.part])) : "")}" placeholder="${esc(fx(num(p.mark)))}"></td>
+                <td class="num">${paperOf(p) > 0 ? +(num(p.mark) / paperOf(p)).toFixed(4) : ""}</td></tr>`).join("")}</tbody></table></div>
+              <p class="note">The allocated marks come from the sub-categories table above (as a mark or a % of the test). Leave "Total on the paper" empty when the paper was marked out of the allocated mark.</p>` : ""}
             ${fullT > 0 ? "" : `<p class="warn-text">${esc(exam)} has no mark yet. Type it in <b>Assessment plan &gt; Summative assessment</b> first.</p>`}
             ${usePaper ? `<p class="note">Conversion factor (<bdi>معامل التحويل</bdi>) = ${fx(fullT)} ÷ ${fx(paper)} = ${+(fullT / paper).toFixed(4)}. Type the <b>Mark on the paper</b> (out of ${fx(paper)}); the <b>Total mark</b> (out of ${fx(fullT)}) is worked out.</p>` : ""}
             <p class="note">The full mark comes from the Assessment plan (change it there). The CLOs and SLOs this test counts for come from the ticks on the <b>Assessment plan</b> page.</p>`}
         ${other.length ? `<p class="warn-text">${esc(exam)} already has marks entered as <b>${mode === "q" ? MODES[1][1] : MODES[0][1]}</b> (${new Set(other.map((r) => T.s(r.student_id))).size} students). They will be replaced as soon as you type marks here.</p>` : ""}
         ${g.from ? `<p class="note">The ${g.rows.length} students come from ${esc(g.from)}. Add or delete rows as needed.</p>` : ""}
-        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, calc: usePaper ? { label: `Total mark (out of ${fx(fullT)})`, f: (r) => conv(r.v[XM_TOTAL]) } : null })}
+        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, calc: usePaper ? { label: `Total mark (out of ${fx(fullT)})`, f: (r) => conv(r.v[XM_TOTAL]) } : byParts ? { label: `Total mark (out of ${fx(fullT)})`, f: partsSum } : null })}
         ${nS && fullT > 0 ? `<div class="kcards">${[["Students with marks", nS], ["Average mark", `${fx(avg)} <small>/ ${fx(fullT)}</small>`], ["Average (%)", `${fx(avgP)}%`]].map(([l, v]) => `<div class="kcard"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>
           ${clo.length ? `<h3 class="qm-h">These marks by CLO</h3><div class="bp-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>CLO</th><th class="num">Average share of the marks (%)</th></tr></thead><tbody>${clo.map(([c, v]) => `<tr><td><b>${esc(c)}</b></td><td class="num">${fx(v)}</td></tr>`).join("")}</tbody></table></div>`
             : cloIds ? `<div class="info-box"><span>No CLO is linked to these marks yet. ${mode === "q" ? "Link the questions to CLOs in the Exam builder." : `Tick <b>${esc(exam)}</b> for its CLOs on the Assessment plan page.`}</span></div>` : ""}` : ""}`;
       el.innerHTML = head() + body;
       $$("[data-xmm]", el).forEach((b) => b.onclick = () => { ui().xm_mode[ek] = b.dataset.xmm; S.save(); T.refresh("irMarks"); });
+      $$("[data-xpp]", el).forEach((f) => f.onchange = () => { const all = ui().xm_paper_parts = ui().xm_paper_parts || {}, o = all[ek] = all[ek] || {}, v = num(f.value); if (v && v > 0) o[f.dataset.xpp] = v; else o[f.dataset.xpp] = undefined; S.save(); T.refresh("irMarks"); });
       const pp = $("#xm-paper", el); if (pp) pp.onchange = () => { (ui().xm_paper = ui().xm_paper || {})[ek] = Math.max(0, num(pp.value) || 0); S.save(); T.refresh("irMarks"); };
-      T.marksGridWire(el, { id: "xm", cols, rows: g.rows, file: `marks_${T.baseCode(sel)}_${exam}`, calc: usePaper ? { f: (r) => conv(r.v[XM_TOTAL]) } : null,
-        onSave: (rows) => { T.marksSave(sel, exam, qids, usePaper ? rows.map((r) => ({ sid: r.sid, nm: r.nm, v: { [XM_TOTAL]: conv(r.v[XM_TOTAL]) }, pm: { [XM_TOTAL]: r.v[XM_TOTAL] } })) : rows, true); delete grids[ek]; later(); },
+      T.marksGridWire(el, { id: "xm", cols, rows: g.rows, file: `marks_${T.baseCode(sel)}_${exam}`, calc: usePaper ? { f: (r) => conv(r.v[XM_TOTAL]) } : byParts ? { f: partsSum } : null,
+        onSave: (rows) => { T.marksSave(sel, exam, qids, byParts ? rows.map((r) => { const v = {}, pm = {}; parts.forEach((p) => { v[p.part] = convPart(p, r.v[p.part]); if (r.v[p.part] !== null && r.v[p.part] !== undefined) pm[p.part] = r.v[p.part]; }); v[XM_TOTAL] = partsSum(r); return { sid: r.sid, nm: r.nm, v, pm }; }) : usePaper ? rows.map((r) => ({ sid: r.sid, nm: r.nm, v: { [XM_TOTAL]: conv(r.v[XM_TOTAL]) }, pm: { [XM_TOTAL]: r.v[XM_TOTAL] } })) : rows, true); delete grids[ek]; later(); },
         redraw: () => T.refresh("irMarks") });
       wireSubs(sel, el);
       return;
