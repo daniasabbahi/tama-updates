@@ -558,3 +558,4 @@ td.kpi-above, .ir-legend .kpi-above { background: #1e7b34; color: #fff; font-wei
 .xs-tbl input.cell, .xs-tbl select.cell { width: 100%; box-sizing: border-box; }
 .xs-msgs { line-height: 1.7; font-size: 13px; margin: 6px 0; }
 tr.sub-row td { color: var(--soft); font-size: 12.5px; background: var(--cream-soft); }
+tr.sub-bad td { background: #fdf3e2; }

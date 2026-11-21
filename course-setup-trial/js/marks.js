@@ -318,6 +318,19 @@
     });
     S.save();
   }
+  /** {assessment: problem text} for the sub-categories that do not add up to the full mark of their assessment (or are incomplete). */
+  function subProblems(sel) {
+    const full = fullMarks(sel), rows = subRows(sel), out = {};
+    [...new Set(rows.map((r) => r.Assessment).filter(Boolean))].forEach((a) => {
+      const parts = rows.filter((r) => r.Assessment === a), M = full[a];
+      if (parts.some((r) => num(r.Mark) === null)) { out[a] = "a sub-category has no mark yet"; return; }
+      if (parts.some((r) => !r["Sub-category"])) { out[a] = "a sub-category has no name yet"; return; }
+      const sm = parts.reduce((x, r) => x + num(r.Mark), 0);
+      if (M === null || M === undefined) out[a] = `the sub-categories add up to ${fx(sm)}, but the assessment has no full mark in the Assessment plan`;
+      else if (Math.abs(sm - M) > 0.01) out[a] = `the sub-categories add up to ${fx(sm)}, not ${fx(M)} (${sm < M ? "add" : "remove"} ${fx(Math.abs(M - sm))} marks). They are not used until they add up to ${fx(M)}`;
+    });
+    return out;
+  }
   function subsHtml(sel) {
     const mains = cas(sel).map((r) => r.assessment).filter(Boolean), full = fullMarks(sel), rows = subRows(sel);
     const tot = (() => { const g = T.plan && T.plan.crStore ? num(((T.plan.crStore(sel) || {}).grading_cfg || {}).total) : null; return g || Object.values(full).reduce((a, b) => a + (b || 0), 0); })();
@@ -337,7 +350,7 @@
       else if (Math.abs(sm - M) > 0.01) msgs.push(`${lab} of ${fx(M)} marks ${w(`the sub-categories should add up to ${fx(M)} (${sm < M ? "add" : "remove"} ${fx(Math.abs(M - sm))} marks)`)}`);
       else msgs.push(`${lab} of ${fx(M)} marks <span class="ok-text">✓</span>`);
     });
-    return `<details class="sum-box" ${S.ui.xmSubOpen ? "open" : ""} id="xs-box"><summary>Sub-categories of the assessments (optional)</summary>
+    return `<details class="sum-box" ${S.ui.xmSubOpen ? "open" : ""} id="xs-box"><summary>Sub-categories of the assessments (optional)${Object.keys(subProblems(sel)).length ? ' <span class="warn-text inline">check the marks</span>' : ""}</summary>
       <p class="note">Split any assessment into sub-categories, each with its own mark (e.g. Portfolio → Written report 12, Oral defence 8). Type each mark as a number or as a percentage of the assessment (e.g. 40%). The marks of the sub-categories must add up to the full mark of the assessment (from Assessment plan). The marks of each sub-category are then entered separately below. For a test, the type of questions is used in Step 2 above. Saved by itself.</p>
       ${mains.length ? `<div class="bp-wrap"><table class="tbl xs-tbl"><thead><tr><th>Main assessment</th><th>Sub-category</th><th>Type of questions</th><th class="num" style="width:90px">Mark <i class="hint" title="Type the mark (e.g. 4) or the percentage of the assessment (e.g. 40%).">?</i></th><th class="num" style="width:100px">% of the assessment</th><th class="num" style="width:110px">Weight (calculated)</th><th style="width:34px"></th></tr></thead><tbody>
         ${rows.map((r, i) => `<tr><td>${sel1(r.Assessment, opts, "data-xsa", i)}</td><td><input class="cell" data-xs="${i}" data-c="Sub-category" data-ref="xs:${i}:s" value="${esc(r["Sub-category"])}" placeholder="e.g. Written report, MCQ part"></td>
@@ -385,10 +398,13 @@
     const sel = T.current(), el = $("#sec-irmk"); if (!el) return;
     const exam = T.s((S.ui.irExam || {})[sel]).trim(), ok = exam && T.irParts.examsOf(sel).includes(exam);
     const ca = cas(sel), done = marked(sel), full = fullMarks(sel);
-    const hasSub = ca.some((r) => partsOf(sel, r.assessment).length);
+    const probs = subProblems(sel), typed = subRows(sel);
+    const hasSub = ca.some((r) => partsOf(sel, r.assessment).length || probs[r.assessment]);
     const list = ca.length ? `<div class="bp-wrap"><table class="tbl" style="max-width:820px"><thead><tr><th>Assessment</th><th>Type</th><th class="num">Full mark</th>${hasSub ? '<th class="num">Sub-category mark</th>' : ""}<th>Student marks</th></tr></thead><tbody>
       ${ca.map((r) => `<tr><td><b>${esc(r.assessment)}</b></td><td>${esc(r.type || "")}</td><td class="num">${num(r.full_grade) === null ? "-" : fx(num(r.full_grade))}</td>${hasSub ? "<td></td>" : ""}<td>${done[r.assessment] ? `<span class="ok-text">✓ ${esc(done[r.assessment])}</span>` : `<span class="muted">Not yet</span>`}</td></tr>`
-        + partsOf(sel, r.assessment).map((p) => `<tr class="sub-row"><td>&nbsp;&nbsp;↳ ${esc(p.part)}</td><td>${esc(SUB_INV[p.kind] || "")}</td><td></td><td class="num">${fx(p.mark)}</td><td></td></tr>`).join("")).join("")}</tbody></table></div>` : "";
+        + (probs[r.assessment] ? typed.filter((t) => t.Assessment === r.assessment).map((t) => `<tr class="sub-row"><td>&nbsp;&nbsp;↳ ${esc(t["Sub-category"] || "(no name)")}</td><td>${esc(t.Type || "")}</td><td></td><td class="num">${esc(t.Mark)}</td><td></td></tr>`).join("")
+            + `<tr class="sub-row sub-bad"><td colspan="5"><span class="warn-text inline">${esc(r.assessment)}: ${esc(probs[r.assessment])}.</span></td></tr>`
+          : partsOf(sel, r.assessment).map((p) => `<tr class="sub-row"><td>&nbsp;&nbsp;↳ ${esc(p.part)}</td><td>${esc(SUB_INV[p.kind] || "")}</td><td></td><td class="num">${fx(p.mark)}</td><td></td></tr>`).join(""))).join("")}</tbody></table></div>` : "";
     const missing = ca.map((r) => r.assessment).filter((a) => !done[a]), noFull = ca.filter((r) => num(r.full_grade) === null).map((r) => r.assessment);
     let body = `<p class="note">Choose the test in <b>Step 1</b> at the top of the page to enter its student marks.</p>`;
     if (ok) {
@@ -441,6 +457,7 @@
             ${fullT > 0 ? "" : `<p class="warn-text">${esc(exam)} has no mark yet. Type it in <b>Assessment plan &gt; Summative assessment</b> first.</p>`}
             ${usePaper ? `<p class="note">Conversion factor (<bdi>معامل التحويل</bdi>) = ${fx(fullT)} ÷ ${fx(paper)} = ${+(fullT / paper).toFixed(4)}. Type the <b>Mark on the paper</b> (out of ${fx(paper)}); the <b>Total mark</b> (out of ${fx(fullT)}) is worked out.</p>` : ""}
             <p class="note">The full mark comes from the Assessment plan (change it there). The CLOs and SLOs this test counts for come from the ticks on the <b>Assessment plan</b> page.</p>`}
+        ${probs[exam] ? `<p class="warn-text"><b>The sub-categories of ${esc(exam)} do not add up to its full mark:</b> ${esc(probs[exam])}. Fix them in <b>Sub-categories of the assessments</b> above.</p>` : ""}
         ${other.length ? `<p class="warn-text">${esc(exam)} already has marks entered as <b>${mode === "q" ? MODES[1][1] : MODES[0][1]}</b> (${new Set(other.map((r) => T.s(r.student_id))).size} students). They will be replaced as soon as you type marks here.</p>` : ""}
         ${g.from ? `<p class="note">The ${g.rows.length} students come from ${esc(g.from)}. Add or delete rows as needed.</p>` : ""}
         ${byParts || usePaper ? `<div class="def-box"><b>Type the marks on the paper.</b> For each student, type the mark exactly as it was corrected on the paper${byParts ? " in each sub-category column (out of its Total on the paper)" : ` (out of ${fx(paper)})`}. The <b>Total mark</b> (out of ${fx(fullT)}) is worked out for you.</div>` : ""}
