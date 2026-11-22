@@ -388,9 +388,7 @@
           <tbody>${topics.map((t, i) => { const v = tp[t] || {}; return `<tr data-t="${i}" class="${v.not_covered ? "nc-on" : ""}"><td class="wrap ro">${esc(t)}</td>
             <td class="ctr nc-cell"><label class="nc-lab"><input type="checkbox" class="nc-tick" data-ref="top:${i}:nc" ${v.not_covered ? "checked" : ""} aria-label="Not covered"><span class="nc-word">Not covered</span></label></td>
             ${[["reason", "Reason"], ["impact", "Impact on learning outcomes"], ["action", "Compensating action"]].map(([k, lab]) => `<td data-l="${lab}"><textarea rows="1" class="cell ${T.s(v[k]).trim() ? "filled" : ""}" data-ref="top:${i}:${k}" data-k="${k}" spellcheck="true">${esc(v[k])}</textarea></td>`).join("")}</tr>`; }).join("")}</tbody></table>
-        <div class="row-btns"><button class="btn" id="top-sug">✨ Suggest impact and action for the ticked topics</button>
-          <button class="btn" id="top-ai" ${T.aiReady() ? "" : "disabled"} title="${T.aiReady() ? "Your own linked AI tool writes them" : "Link your own AI tool in the Ask the assistant window first"}">🤖 Ask AI for impact and action</button></div>
-        <p class="warn-text" id="top-ai-msg" hidden></p>
+        ${T.sug.html("topics", { dataLabel: "Suggest impact and action from my data", aiLabel: "Suggest impact and action with AI" })}
         <p class="note">${n ? `${n} topic(s) marked as not covered. They will be listed in section C of the Course Report.` : "Tick the topics that were not covered (or choose Yes above if every topic was covered)."}</p>`}`;
     $$("[data-tq]", el).forEach((b) => b.onclick = () => {
       const now = b.dataset.tq; if (now === was) return;
@@ -411,35 +409,21 @@
         ta.addEventListener("change", () => { ta.value = T.cap1(ta.value.trim(), "text"); put(t, { [ta.dataset.k]: ta.value }); S.save(); });
       });
     });
-    const sb = $("#top-sug", el);
-    if (sb) sb.onclick = () => {
-      const ticked = Object.keys(tp).filter((t) => tp[t].not_covered && topics.includes(t));
-      if (!ticked.length) { T.toast("Tick at least one topic as not covered first.", "warn"); return; }
-      ticked.forEach((t) => { tp[t].impact = tp[t].impact || sugImpact(sel, t); tp[t].action = tp[t].action || sugAction(sel, t); });
-      S.save(); T.toast(`Impact and action suggested for ${ticked.length} topic(s). Boxes you had already filled were kept.`);
-      T.refresh("topics");
-    };
-    const ab = $("#top-ai", el);
-    if (ab) ab.onclick = async () => {
-      const ticked = Object.keys(tp).filter((t) => tp[t].not_covered && topics.includes(t));
-      if (!ticked.length) { T.toast("Tick at least one topic as not covered first.", "warn"); return; }
-      const info = ticked.map((t) => {
-        const [, clos, others] = topicLinks(sel, t);
-        const txts = slosOf(sel).filter((r) => T.s(r.topic) === t).map((r) => r.slo_text);
-        return `Topic '${t}' (reason not covered: ${tp[t].reason || "not given"}); its SLOs: ${txts.join("; ")}; linked CLOs: ${clos.join(", ") || "none"}; other topics covering the same CLOs: ${JSON.stringify(others)}`;
-      });
-      const ci = S.courseInfo(sel) || {};
-      const ctx = `Course: ${S.courseLabel(sel, true)}; program ${ci.program || "-"}.\nCLOs:\n` + T.closOf(sel).map((c) => `${c.clo_id} (${c.domain}): ${c.clo_text}`).join("\n");
-      ab.disabled = true; ab.textContent = "🤖 Asking your AI tool...";
-      try {
-        const got = await T.aiJson(`COURSE DATA\n${ctx}\n\nTOPICS NOT COVERED\n${info.join("\n")}\n\nTASK\nFor each topic, write the 'Extent of their Impact on Learning Outcomes' and a practical 'Compensating Action' for the Course Report (25-60 words each). Return a JSON object: {topic: {"impact": ..., "action": ...}} using the topic names exactly as given.`);
-        let n = 0;
-        Object.entries(got || {}).forEach(([t, v]) => { if (tp[t] && v && typeof v === "object") { tp[t].impact = T.s(v.impact || tp[t].impact).trim(); tp[t].action = T.s(v.action || tp[t].action).trim(); n++; } });
-        S.save(); T.toast(`Your AI tool wrote the impact and action for ${n} topic(s). Change anything you need.`); T.refresh("topics");
-      } catch (e) {
-        ab.disabled = false; ab.textContent = "🤖 Ask AI for impact and action";
-        const m = $("#top-ai-msg", el); m.hidden = false; m.textContent = "Your AI tool could not answer: " + e.message;
-      }
-    };
+    const ticked = () => Object.keys(tp).filter((t) => tp[t].not_covered && topics.includes(t));
+    const KL = { impact: "Impact on learning outcomes", action: "Compensating action" };
+    T.sug.bind(el, "topics", { redraw: () => T.refresh("topics"), empty: "Tick at least one topic as not covered first.",
+      items: () => ticked().flatMap((t) => ["impact", "action"].map((k) => ({ id: `${t}||${k}`, label: `${t}: ${KL[k]}`, current: tp[t][k] || "" }))),
+      local: (id) => { const [t, k] = id.split("||"); return k === "impact" ? sugImpact(sel, t) : sugAction(sel, t); },
+      apply: (id, txt) => { const [t, k] = id.split("||"); if (tp[t]) tp[t][k] = txt; },
+      ai: async () => {
+        const tk = ticked(), info = tk.map((t) => {
+          const [, clos, others] = topicLinks(sel, t);
+          const txts = slosOf(sel).filter((r) => T.s(r.topic) === t).map((r) => r.slo_text);
+          return `Topic '${t}' (reason not covered: ${tp[t].reason || "not given"}); its SLOs: ${txts.join("; ")}; linked CLOs: ${clos.join(", ") || "none"}; other topics covering the same CLOs: ${JSON.stringify(others)}; current impact: ${tp[t].impact || "-"}; current action: ${tp[t].action || "-"}`;
+        });
+        const got = await T.aiJson(`COURSE DATA\n${T.sug.context(sel)}\n\nTOPICS NOT COVERED\n${info.join("\n")}\n\nTASK\nFor each topic, write the 'Extent of their Impact on Learning Outcomes' and a practical 'Compensating Action' for the Course Report (25-60 words each). Where the coordinator already wrote one, improve it and keep its facts. Return a JSON object: {topic: {"impact": ..., "action": ...}} using the topic names exactly as given.`);
+        const out = {}; Object.entries(got || {}).forEach(([t, v]) => { if (v && typeof v === "object") { if (v.impact) out[`${t}||impact`] = v.impact; if (v.action) out[`${t}||action`] = v.action; } });
+        return out;
+      } });
   };
 })();

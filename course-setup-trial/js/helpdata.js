@@ -80,6 +80,11 @@ window.TAMA_HELP = {
 "faq": [
 [
 "All pages",
+"Can the app or AI suggest the comments and recommendations for me?",
+"Yes. Under every comment and recommendation box there are two buttons. \"Suggest from my data\" writes a draft from your own numbers (no AI needed). \"Suggest with AI\" asks your own linked AI tool (link it under Ask the assistant > Link my AI tool). The suggestion appears in a box first: edit it if you like, then choose Use this, Add to the end of my text, or Ignore. Nothing is saved until you choose. Only course numbers are sent to the AI, never student names or IDs."
+],
+[
+"All pages",
 "Do I need to press Save?",
 "No, not to keep what you type: every entry saves itself as soon as you type it or leave the box. A few buttons (for example **Save new course** or **Save exam details**) create something new: press them once to create it."
 ],

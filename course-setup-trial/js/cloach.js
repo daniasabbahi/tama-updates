@@ -248,8 +248,10 @@
           <td class="ctr">${g2(r.target)}</td><td class="ctr">${r.calc === null ? "-" : g2(r.calc)}${r.info ? `<span class="mg-out">${r.info.n} students</span>` : ""}</td>
           <td><input class="cell num-in ${r.typed ? "filled" : ""}" inputmode="decimal" data-clact="${esc(r.cid)}" data-ref="clact:${esc(r.cid)}" value="${esc(g2(r.actual))}"></td>
           <td><textarea class="cell" rows="2" data-clcom="${esc(r.cid)}" data-ref="clcom:${esc(r.cid)}">${esc(r.comment)}</textarea></td></tr>`).join("")}</tbody></table></div>
-        <p class="note">Assessment methods marked * are left out of the actual level. The actual level is the calculated value unless you type another one; clear it to go back.</p>` : `<p class="note">This course has no CLOs yet.</p>`}
-      <label class="fld ${T.s(d.recommendations).trim() ? "filled" : ""}" for="cl-rec"><span class="lbl">Recommendations (section B2)</span><textarea id="cl-rec" rows="4">${esc(d.recommendations || "")}</textarea></label>`;
+        <p class="note">Assessment methods marked * are left out of the actual level. The actual level is the calculated value unless you type another one; clear it to go back.</p>
+        ${T.sug.html("clcom", { dataLabel: "Suggest the comments from my data", aiLabel: "Suggest the comments with AI" })}` : `<p class="note">This course has no CLOs yet.</p>`}
+      <label class="fld ${T.s(d.recommendations).trim() ? "filled" : ""}" for="cl-rec"><span class="lbl">Recommendations (section B2)</span><textarea id="cl-rec" rows="4">${esc(d.recommendations || "")}</textarea></label>
+      ${T.sug.html("clrec")}`;
     $$("[data-clrule]", el).forEach((b) => b.onclick = () => { d.rule = b.dataset.clrule; S.save(); T.refresh("cloReport"); });
     $$("[data-clex]", el).forEach((b) => b.onchange = () => { const s = new Set(d.exclude || []); if (b.checked) s.add(b.dataset.clex); else s.delete(b.dataset.clex); d.exclude = [...s]; S.save(); T.refresh("cloReport"); });
     $$("[data-clmt]", el).forEach((f) => f.onchange = () => { const cid = f.dataset.clmt, nw = split(f.value.replace(/\*/g, "")).join(", "), ticksTxt = (() => { const t = d.methods[cid]; delete d.methods[cid]; const r = cloMethods(sel, cid).join(", "); if (t !== undefined) d.methods[cid] = t; return r; })();
@@ -257,6 +259,17 @@
     $$("[data-clact]", el).forEach((f) => f.onchange = () => { const cid = f.dataset.clact, r = rows.find((x) => x.cid === cid), a = num(f.value); if (a === null || (r.calc !== null && Math.round(a * 100) === Math.round(r.calc * 100))) delete d.actual[cid]; else d.actual[cid] = a; S.save(); T.refresh("cloReport"); });
     $$("[data-clcom]", el).forEach((f) => { T.autoGrow(f); f.oninput = () => { d.clo_comments[f.dataset.clcom] = f.value; T.autoGrow(f); S.save(); }; });
     const rec = $("#cl-rec", el); T.autoGrow(rec); rec.oninput = () => { d.recommendations = rec.value; T.autoGrow(rec); T.markFilled(rec); S.save(); };
+    const redraw = () => T.refresh("cloReport");
+    T.sug.bind(el, "clcom", { redraw, empty: "This course has no CLOs yet.",
+      items: () => reportRows(sel).map((r) => ({ id: r.cid, label: `CLO ${r.no} (${r.cid})`, current: d.clo_comments[r.cid] || "" })),
+      local: (cid) => T.sug.cloComment(sel, reportRows(sel).find((r) => r.cid === cid)),
+      apply: (cid, t) => { d.clo_comments[cid] = t; },
+      ai: (items) => T.aiJson(`COURSE DATA\n${T.sug.context(sel)}\n\nTASK\nFor each CLO write the 'Comment on Assessment Results' for section B of the Course Report (30-70 words each): say whether the target was met, possible reasons, and what to keep or change. Where the coordinator already wrote a comment, improve it and keep its facts.\nCurrent comments: ${JSON.stringify(Object.fromEntries(items.map((it) => [it.id, it.current])))}\nReturn a JSON object {CLO id: comment} using these CLO ids exactly: ${items.map((it) => it.id).join(", ")}.`) });
+    T.sug.bind(el, "clrec", { redraw,
+      items: () => [{ id: "rec", label: "", current: d.recommendations || "" }],
+      local: () => T.sug.recommendations(sel),
+      apply: (id, t) => { d.recommendations = t; },
+      ai: () => T.sug.askText(sel, T.sug.TASKS.recommendations, d.recommendations) });
   };
 
   async function excel(sel) {

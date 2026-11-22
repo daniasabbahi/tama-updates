@@ -288,10 +288,16 @@
         <tr><td><b>Number of students</b></td>${CR_GRADES.map((L) => `<td class="ctr">${g.counts[L]}</td>`).join("")}${keys.map((k) => `<td class="ctr">${g.status[k]}</td>`).join("")}</tr>
         <tr><td><b>Percentage</b></td>${CR_GRADES.map((L) => `<td class="ctr">${g.counts_pct[L] === null ? "" : g2(g.counts_pct[L])}</td>`).join("")}${keys.map((k) => `<td class="ctr">${g.status_pct[k] === null ? "" : g2(g.status_pct[k])}</td>`).join("")}</tr></tbody></table></div>
       <p class="note">Started the course: ${g.started} · completed: ${g.completed}. Grade percentages are of the students who completed the course; denied entry, in progress, incomplete and withdrawn are of the students who started it.</p>
-      <label class="fld ${T.s(d.grade_comment).trim() ? "filled" : ""}" for="ms-com"><span class="lbl">Comment on student grades (including particular factors, if any, affecting the results)</span><textarea id="ms-com" rows="4" data-ref="ms-com">${esc(d.grade_comment || "")}</textarea></label>`;
+      <label class="fld ${T.s(d.grade_comment).trim() ? "filled" : ""}" for="ms-com"><span class="lbl">Comment on student grades (including particular factors, if any, affecting the results)</span><textarea id="ms-com" rows="4" data-ref="ms-com">${esc(d.grade_comment || "")}</textarea></label>
+      ${T.sug.html("mscom")}`;
     $("#ms-ip", el).onchange = (e) => { d.in_progress = Math.max(0, Math.round(num(e.target.value) || 0)); S.save(); T.refresh("msReport"); };
     $("#ms-inc", el).onchange = (e) => { d.incomplete = Math.max(0, Math.round(num(e.target.value) || 0)); S.save(); T.refresh("msReport"); };
     const ta = $("#ms-com", el); T.autoGrow(ta); ta.oninput = () => { d.grade_comment = ta.value; T.autoGrow(ta); T.markFilled(ta); S.save(); };
+    T.sug.bind(el, "mscom", { redraw: () => T.refresh("msReport"),
+      items: () => [{ id: "com", label: "", current: d.grade_comment || "" }],
+      local: () => T.sug.gradeComment(sel),
+      apply: (id, t) => { d.grade_comment = t; },
+      ai: () => T.sug.askText(sel, T.sug.TASKS.grade_comment, d.grade_comment) });
   };
 
   const redrawAll = () => T.refresh("msSource", "msSheet", "msStats", "msReport");

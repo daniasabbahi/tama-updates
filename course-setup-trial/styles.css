@@ -642,3 +642,20 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .cl-hand td input.cell { width: 64px !important; min-width: 0 !important; max-width: 64px; text-align: center; padding-left: 4px; padding-right: 4px; }
 .cl-hand td { vertical-align: middle; }
 .cl-heat th { white-space: normal; min-width: 80px; max-width: 140px; }
+
+/* ---------- "Suggest, then decide" box (js/suggest.js) */
+.sug-box { margin: 8px 0 4px; }
+.sug-btns { align-items: center; gap: 8px; flex-wrap: wrap; }
+.sug-btns .note { margin: 0; }
+.sug-panel { border: 1.5px dashed var(--mauve); background: var(--mauve-tint); border-radius: 12px; padding: 12px 14px; margin-top: 8px; }
+.sug-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 8px; }
+.sug-head b { color: var(--mauve-dark); }
+.sug-head .note { flex: 1 1 260px; margin: 0; }
+.sug-all { display: flex; gap: 6px; }
+.sug-item { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+.sug-lbl { font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.sug-cur { font-size: 13px; color: var(--soft); margin-bottom: 6px; }
+.sug-cur summary { cursor: pointer; }
+.sug-cur div { white-space: pre-wrap; padding: 4px 0 0 14px; }
+.sug-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--field); border-radius: 8px; padding: 8px 10px; font: inherit; resize: vertical; min-height: 64px; background: var(--cream-soft); }
+.sug-item .row-btns { margin-top: 6px; gap: 6px; flex-wrap: wrap; }
