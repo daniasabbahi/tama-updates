@@ -540,22 +540,22 @@
     raw = raw.filter((r) => r.some((c) => clean(c)));
     const low = (v) => T.s(v).toLowerCase().replace(/\s+/g, " ").trim();
     const isId = (h) => h === "id" || h === "no" || h === "no." || /student ?(id|no|number|#)|computer|university|\bid\b|رقم|الرقم/.test(h);
-    const isNm = (h) => /name|الاسم|اسم/.test(h), isG = (h) => /gender|sex|الجنس|النوع/.test(h);
+    const isNm = (h) => /name|الاسم|اسم/.test(h), isG = (h) => /gender|sex|الجنس|النوع/.test(h), isD = (h) => /discipline|department|specialt|speciality|major|التخصص|القسم/.test(h);
     let hdr = -1;
     for (let i = 0; i < Math.min(raw.length, 15); i++) { const h = raw[i].map(low); if (h.some(isNm) || h.some(isId)) { hdr = i; break; } }
     if (hdr < 0) return { err: "I could not find a header row with 'Student ID' or 'Student name'." };
-    const h = raw[hdr].map(low), cNm = h.findIndex(isNm), cId = h.findIndex((x, j) => j !== cNm && isId(x)), cG = h.findIndex((x, j) => j !== cId && j !== cNm && isG(x));
+    const h = raw[hdr].map(low), cNm = h.findIndex(isNm), cId = h.findIndex((x, j) => j !== cNm && isId(x)), cG = h.findIndex((x, j) => j !== cId && j !== cNm && isG(x)), cD = h.findIndex((x, j) => j !== cId && j !== cNm && j !== cG && isD(x));
     if (cId < 0 && cNm < 0) return { err: "I could not find the Student ID or Student name column." };
     const list = [], seen = new Set();
     for (let i = hdr + 1; i < raw.length; i++) {
       const r = raw[i]; let sid = cId >= 0 ? clean(r[cId]) : ""; if (/^\d+\.0$/.test(sid)) sid = sid.slice(0, -2);
       const nm = cNm >= 0 ? clean(r[cNm]) : ""; if (!sid && !nm) continue;
       const k = (sid || nm).toLowerCase(); if (seen.has(k)) continue; seen.add(k);
-      list.push({ sid, nm, gn: cG >= 0 ? gNorm(r[cG]) : "" });
+      list.push({ sid, nm, gn: cG >= 0 ? gNorm(r[cG]) : "", dp: cD >= 0 ? clean(r[cD]) : "" });
     }
     if (!list.length) return { err: "I found the header row but no students under it." };
     const nM = list.filter((r) => r.gn === "M").length, nF = list.filter((r) => r.gn === "F").length, nN = list.length - nM - nF;
-    return { list, note: `${list.length} students found${cG >= 0 ? ` (${nM} male, ${nF} female${nN ? `, ${nN} without a gender` : ""})` : ". There is no Gender column, so you can choose each student's gender in the list below"}.` };
+    return { list, hasD: cD >= 0, note: `${list.length} students found${cD >= 0 ? `, with their discipline` : ""}${cG >= 0 ? ` (${nM} male, ${nF} female${nN ? `, ${nN} without a gender` : ""})` : ". There is no Gender column, so you can choose each student's gender in the list below"}.` };
   }
   const clsRows = {};
   T.sections.xmList = function () {
@@ -570,7 +570,7 @@
       <div class="row-btns"><label class="btn sm primary"><input type="file" id="xl-file" accept=".xlsx,.xls,.csv" hidden>Upload the student list (Excel or CSV)</label>
         <button class="btn sm" id="xl-tpl">${L.length ? "Download the list (Excel)" : "Download an empty sheet to fill"}</button>
         ${L.length && !cl.from ? `<button class="btn sm" id="xl-clear">Clear the list</button>` : ""}</div>
-      <p class="note">The file needs one row per student, with the columns <b>Student ID</b>, <b>Student name</b> and <b>Gender</b> (M or F). Arabic headings (<bdi>الرقم الجامعي، الاسم، الجنس</bdi>) work too.</p>
+      <p class="note">The file needs one row per student, with the columns <b>Student ID</b>, <b>Student name</b> and <b>Gender</b> (M or F). Arabic headings (<bdi>الرقم الجامعي، الاسم، الجنس</bdi>) work too. A <b>Discipline</b> column (for postgraduate courses) is read as well.</p>
       <div id="xl-prev"></div>
       ${L.length ? `<div class="kcards">${[["Students", L.length, ""], ["Male (M)", nM, "g-m"], ["Female (F)", nF, "g-f"]].map(([l, v, c]) => `<div class="kcard ${c}"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>` : ""}
       ${cl.from ? `<p class="note">This list comes from ${esc(cl.from)}. Upload a file or change it here to keep your own list.</p>` : ""}
@@ -620,7 +620,7 @@
         prev.innerHTML = `<div class="info-box"><span>${esc(got.note)}${L.length ? ` It will replace the ${L.length} students in the list now.` : ""}</span><button class="btn sm primary" id="xl-use">Use this list</button></div>
           <div class="bp-wrap"><table class="tbl xl-tbl" style="max-width:640px"><thead><tr><th>Student ID</th><th>Student name</th><th class="ctr">Gender</th></tr></thead><tbody>${got.list.slice(0, 8).map((r) => `<tr><td>${esc(r.sid)}</td><td>${esc(r.nm)}</td><td class="ctr">${esc(r.gn || "-")}</td></tr>`).join("")}</tbody></table></div>
           ${got.list.length > 8 ? `<p class="note">... and ${got.list.length - 8} more.</p>` : ""}`;
-        $("#xl-use", prev).onclick = () => { rows.length = 0; rows.push(...got.list); after(); T.toast(`Student list taken from ${f.name}: ${got.list.length} students`); };
+        $("#xl-use", prev).onclick = () => { if (got.hasD) { const all = (ui().ms_disc = ui().ms_disc || {}), d = (all[sel] = all[sel] || {}); got.list.forEach((r) => { if (r.dp) d[r.sid || r.nm] = r.dp; }); } rows.length = 0; rows.push(...got.list.map(({ dp, ...r }) => r)); after(); T.toast(`Student list taken from ${f.name}: ${got.list.length} students`); };
       } catch (e) { prev.innerHTML = `<div class="alert-box"><span class="alert-ic">⚠</span><span>The file could not be read (${esc(e.message || e)}).</span></div>`; }
     };
   };
