@@ -49,6 +49,9 @@
     if (lr.recommendations) L.push("Last Course Report's recommendations: " + T.s(lr.recommendations).slice(0, 1200));
     const tps = Object.entries(d.topics || {}).filter(([, x]) => x && x.not_covered).map(([t, x]) => `${t} (reason: ${T.s(x.reason) || "not given"})`);
     L.push("Topics not covered: " + (tps.length ? tps.join("; ") : "none"));
+    mine("actions", sel).forEach((r) => L.push(`Action (${T.s(r.offering)}): ${T.s(r.action)} [CLO ${T.s(r.clo_id) || "-"}; status ${T.s(r.status)}; achieved ${T.s(r.pct_achieved) || "?"}%; ${T.s(r.comments)}]`));
+    const ev = d.eval || {};
+    if (["responses", "rating", "strengths", "weaknesses"].some((k) => T.s(ev[k]).trim())) L.push(`Student survey: ${T.s(ev.responses)} responses, rating ${T.s(ev.rating)}; liked: ${T.s(ev.strengths)}; suggested improving: ${T.s(ev.weaknesses)}.`);
     return L.join("\n");
   }
   const gradedRows = (v) => v.rows.filter((r) => r.status !== "W" && r.status !== "DN" && T.s(r.letter).toUpperCase() !== "DN" && r.final !== null);
@@ -180,8 +183,48 @@
   const askText = (sel, task, current) => T.aiAsk(`COURSE DATA\n${context(sel)}\n\nTASK\n${task}` + (T.s(current).trim() ? `\n\nThe coordinator's current draft (improve it, keep its facts):\n${current}` : ""));
   const TASKS = {
     grade_comment: "Write the 'Comment on Student Grades' (section A2): describe the grade distribution and completion, and the particular factors that may have affected the results. 80-150 words.",
+    text: "Write 'Overall Student Evaluation and Comments' (section E): summarise the students' views from the survey data if given, and add appropriate statements about student performance based on the grades and CLO results (if there is no survey data, say that survey results should be added). 80-160 words.",
     recommendations: "Write the 'Recommendations' (section B2) based on the CLO results: which CLOs met the target, which did not and possible reasons, and specific, practical recommendations for teaching and assessment. 120-220 words.",
   };
 
-  T.sug = { html, bind, context, askText, TASKS, gradeComment, cloComment, recommendations, pending };
+  /* ---------------------------------------------------------------- the same, for whole table rows (e.g. improvement-plan rows) */
+  const rowPending = {};
+  function rowsHtml(key, o) {
+    o = o || {};
+    const p = rowPending[key];
+    return `<div class="sug-box" data-sugrows="${esc(key)}">
+      <div class="row-btns sug-btns"><button class="btn xs" data-sugrun="data">✨ ${esc(o.dataLabel || "Suggest rows from my data")}</button>
+        <button class="btn xs" data-sugrun="ai" ${T.aiReady() ? "" : "disabled"} title="${esc(aiTitle())}">🤖 ${esc(o.aiLabel || "Suggest rows with AI")}</button>
+        ${T.aiReady() ? "" : `<span class="note">To get AI suggestions, link your own AI tool under Ask the assistant (bottom right).</span>`}</div>
+      <p class="warn-text" data-sugmsg hidden></p>
+      ${p && p.rows.length ? `<div class="sug-panel"><div class="sug-head"><b>${p.src === "ai" ? "🤖 Suggested by your AI tool" : "✨ Suggested from your data"}</b>
+          <span class="note">Change the wording if you like, then add the rows you want. Nothing is added until you choose.</span>
+          <span class="sug-all">${p.rows.length > 1 ? `<button class="btn xs" data-sugall="use">Add all</button>` : ""}<button class="btn xs" data-sugall="ignore">Ignore${p.rows.length > 1 ? " all" : ""}</button></span></div>
+        ${p.rows.map((r, i) => `<div class="sug-item"><div class="sug-rgrid">${o.fields.map(([k, l]) => `<label class="sug-rf ${o.wide && o.wide.includes(k) ? "w" : ""}"><span>${esc(l)}</span><textarea class="sug-ta" rows="2" data-sugi="${i}" data-sugk="${esc(k)}">${esc(r[k] || "")}</textarea></label>`).join("")}</div>
+          <div class="row-btns"><button class="btn primary xs" data-sugdo="use" data-sugi="${i}">${esc(o.addLabel || "Add this row")}</button><button class="btn xs" data-sugdo="ignore" data-sugi="${i}">Ignore</button></div></div>`).join("")}</div>` : ""}</div>`;
+  }
+  /** cfg: { local: () => rows, ai: async () => rows, add: (row) => void, redraw, empty } */
+  function bindRows(root, key, cfg) {
+    const box = $$(`[data-sugrows="${CSS.escape(key)}"]`, root)[0]; if (!box) return;
+    const msg = box.querySelector("[data-sugmsg]");
+    $$("[data-sugrun]", box).forEach((b) => b.onclick = async () => {
+      if (b.dataset.sugrun === "data") { const rows = cfg.local(); if (!rows.length) { T.toast(cfg.empty || "No new suggestion from your data.", "warn"); return; } rowPending[key] = { src: "data", rows }; cfg.redraw(); return; }
+      const old = b.textContent; b.disabled = true; b.textContent = "🤖 Asking your AI tool... (up to a minute)"; msg.hidden = true;
+      try { const rows = (await cfg.ai()) || []; if (!rows.length) throw new Error("the AI answer had no usable rows. Try again."); rowPending[key] = { src: "ai", rows }; cfg.redraw(); }
+      catch (e) { b.disabled = false; b.textContent = old; msg.hidden = false; msg.textContent = "Your AI tool could not answer: " + e.message; }
+    });
+    $$(".sug-ta", box).forEach((ta) => { T.autoGrow(ta); ta.oninput = () => { rowPending[key].rows[+ta.dataset.sugi][ta.dataset.sugk] = ta.value; T.autoGrow(ta); }; });
+    $$("[data-sugdo]", box).forEach((b) => b.onclick = () => {
+      const p = rowPending[key], i = +b.dataset.sugi; if (!p || !p.rows[i]) return;
+      if (b.dataset.sugdo === "use") { cfg.add(p.rows[i]); S.save(); T.toast("Row added. You can still edit it in the table."); }
+      p.rows.splice(i, 1); if (!p.rows.length) delete rowPending[key]; cfg.redraw();
+    });
+    $$("[data-sugall]", box).forEach((b) => b.onclick = () => {
+      const p = rowPending[key]; if (!p) return;
+      if (b.dataset.sugall === "use") { p.rows.forEach((r) => cfg.add(r)); S.save(); T.toast(`${p.rows.length} rows added. You can still edit them.`); }
+      delete rowPending[key]; cfg.redraw();
+    });
+  }
+
+  T.sug = { html, bind, rowsHtml, bindRows, context, askText, TASKS, gradeComment, cloComment, recommendations, pending, gradedRows, statsOf, perAssess };
 })();

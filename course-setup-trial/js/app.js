@@ -90,6 +90,8 @@
       jump: [["h-mssrc", "Where the marks come from"], ["h-mssheet", "Mark sheet"], ["h-msstats", "Statistics and charts"], ["h-msrep", "For the course report"]] },
     "cognitive": { name: "Cognitive distribution", sub: "How the exam questions spread over the cognitive levels (Bloom), by number and by marks, for each exam, question type and learning outcome.",
       jump: [["h-cgpick", "Which exams?"], ["h-cgdist", "Distribution"], ["h-cgby", "By exam and outcome"], ["h-cgdiff", "Difficulty by level"]] },
+    "action-plan": { name: "Improvement action plan", sub: "What to improve next time, the follow-up of the last offering's plan and the student evaluation of the course. Everything saves itself.",
+      jump: [["h-apst", "This offering"], ["h-applan", "Improvement plan"], ["h-apprev", "Last offering"], ["h-apev", "Student evaluation"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -133,7 +135,7 @@
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks" || T.page() === "clo-achievement" || T.page() === "mark-sheet" || T.page() === "cognitive";
+    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks" || T.page() === "clo-achievement" || T.page() === "mark-sheet" || T.page() === "cognitive" || T.page() === "action-plan";
     $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW);
     if (T.page() === "assessment-plan") { T.renderPlanPage(c === NEW ? null : c); return; }
@@ -143,6 +145,7 @@
     if (T.page() === "clo-achievement") { T.renderCloPage(c === NEW ? null : c); return; }
     if (T.page() === "mark-sheet") { T.renderMarkSheetPage(c === NEW ? null : c); return; }
     if (T.page() === "cognitive") { T.renderCogPage(c === NEW ? null : c); return; }
+    if (T.page() === "action-plan") { T.renderActionPlanPage(c === NEW ? null : c); return; }
     if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>
