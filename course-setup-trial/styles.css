@@ -678,3 +678,16 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .dr-card .dr-s.ok { color: var(--ok); }
 .dr-card .dr-s.part { color: var(--warn); }
 .dr-card.soon { opacity: .7; }
+
+/* Settings */
+.brand .logo.has-img { background: #fff; padding: 3px; overflow: hidden; }
+.brand .logo.has-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+#top-logo { height: 28px; width: auto; max-width: 110px; object-fit: contain; margin-right: 10px; }
+.st-logos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin: 12px 0; }
+.st-logo { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; background: var(--card); }
+.st-logo.on { border-color: var(--mauve); box-shadow: 0 0 0 2px var(--mauve-tint); }
+.st-pick { width: 100%; height: 90px; border: 0; background: var(--cream-soft); border-radius: 8px; display: grid; place-items: center; cursor: pointer; padding: 6px; }
+.st-pick img { max-width: 100%; max-height: 78px; object-fit: contain; }
+.st-nm { font-size: 12.5px; color: var(--soft); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-forms { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.st-form { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }

@@ -94,6 +94,10 @@
       jump: [["h-apst", "This offering"], ["h-applan", "Improvement plan"], ["h-apprev", "Last offering"], ["h-apev", "Student evaluation"]] },
     "documents": { name: "Documents and reports", sub: "Every document of the course in one place: open one to see what is filled from your data and what is missing, then download it.",
       jump: [] },
+    "export-reports": { name: "Export reports", sub: "Fill your own forms with the course data, see what is ready in each course's Course Report, and download all your data.",
+      jump: [["h-exforms", "Fill my form"], ["h-exready", "Course Report readiness"], ["h-exdata", "All your data"]] },
+    "settings": { name: "Settings", sub: "Make TAMA yours: your logo, your faculty and university, the texts of the side menu, and the forms you want TAMA to fill for you. Everything saves itself.",
+      jump: [["h-stlogo", "Logo"], ["h-stnames", "Names and texts"], ["h-stforms", "Forms"], ["h-stdata", "Your data"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -132,12 +136,15 @@
 
   function renderAll() {
     renderShell();
+    T.applyBrand && T.applyBrand();
+    $("#picker").hidden = T.page() === "settings";
+    if (T.page() === "settings") { $("#crumb-course").textContent = ""; $("#jump").hidden = false; T.renderSettingsPage(); return; }
     renderPicker();
     const cur = T.current();
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks" || T.page() === "clo-achievement" || T.page() === "mark-sheet" || T.page() === "cognitive" || T.page() === "action-plan" || T.page() === "documents";
+    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks" || T.page() === "clo-achievement" || T.page() === "mark-sheet" || T.page() === "cognitive" || T.page() === "action-plan" || T.page() === "documents" || T.page() === "export-reports";
     $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW) || !(PAGES[T.page()].jump || []).length;
     if (T.page() === "assessment-plan") { T.renderPlanPage(c === NEW ? null : c); return; }
@@ -149,6 +156,7 @@
     if (T.page() === "cognitive") { T.renderCogPage(c === NEW ? null : c); return; }
     if (T.page() === "action-plan") { T.renderActionPlanPage(c === NEW ? null : c); return; }
     if (T.page() === "documents") { T.renderDocsPage(c === NEW ? null : c); return; }
+    if (T.page() === "export-reports") { T.renderExportPage(c === NEW ? null : c); return; }
     if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>
