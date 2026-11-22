@@ -667,3 +667,14 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .sug-rf { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--soft); font-weight: 600; }
 .sug-rf.w { grid-column: 1 / -1; }
 .sug-rf .sug-ta { min-height: 44px; font-weight: 400; color: var(--ink); }
+
+/* Documents and reports */
+.dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 8px; }
+.dr-card { display: flex; flex-direction: column; gap: 6px; text-align: left; min-height: 150px; padding: 16px; border: 1px solid var(--line, #ddd6e3); border-radius: 12px; background: var(--card, #fff); cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.dr-card:hover { border-color: var(--mauve, #6b4e71); box-shadow: 0 2px 10px rgba(31,42,68,.08); }
+.dr-card .dr-t { font-size: 17px; font-weight: 700; color: var(--navy, #1f2a44); }
+.dr-card .dr-d { font-size: 13px; opacity: .78; line-height: 1.45; }
+.dr-card .dr-s { margin-top: auto; font-size: 12.5px; color: var(--soft); }
+.dr-card .dr-s.ok { color: var(--ok); }
+.dr-card .dr-s.part { color: var(--warn); }
+.dr-card.soon { opacity: .7; }
