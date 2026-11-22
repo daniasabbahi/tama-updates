@@ -659,3 +659,5 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .sug-cur div { white-space: pre-wrap; padding: 4px 0 0 14px; }
 .sug-ta { width: 100%; box-sizing: border-box; border: 1px solid var(--field); border-radius: 8px; padding: 8px 10px; font: inherit; resize: vertical; min-height: 64px; background: var(--cream-soft); }
 .sug-item .row-btns { margin-top: 6px; gap: 6px; flex-wrap: wrap; }
+.ip-addc { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.ip-addc .note { margin: 0; }

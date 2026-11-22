@@ -170,15 +170,32 @@
     const y = row ? num(row.kpi_threshold) : null;
     return [t === null ? 70 : t, y === null ? 60 : y];
   }
+  /** Rows that can have partial marks, with marks already typed on the Student marks page: the Exam builder questions that are
+      not MCQ, the sub-categories marked with partial marks, and (when the assessment has neither questions nor sub-categories)
+      the whole assessment, kept as question "TOTAL" so it reads the total marks. */
+  function partialCandidates(sel, exam) {
+    const out = [], one = (ids) => (ids.length === 1 ? ids[0] : "");
+    const sloOf = () => one(tbl("slos").filter((r) => sameC(r, sel) && split(r.assessment_methods).some((m) => m.toLowerCase() === exam.toLowerCase())).map((r) => T.s(r.slo_id)));
+    const eb = tbl("questions").filter((q) => sameC(q, sel) && T.s(q.assessment).trim() === exam && T.s(q.question_id).trim());
+    eb.filter((q) => !ONE01.has(T.s(q.question_type).toUpperCase().replace(/ /g, ""))).forEach((q) => out.push({ row: [T.s(q.question_id).trim(), num(q.max_marks), (split(q.slos)[0] || split(q.clos)[0] || "")], why: "Exam builder question" }));
+    const parts = partsOf(sel, exam);
+    parts.filter((x) => x.kind === "partial" && T.s(x.part).trim()).forEach((x) => out.push({ row: [T.s(x.part).trim(), num(x.mark), sloOf()], why: "sub-category" }));
+    if (!eb.length && !parts.length) { const ca = cas(sel).find((r) => r.assessment === exam); out.push({ row: ["TOTAL", ca ? num(ca.full_grade) : null, sloOf()], why: "whole assessment" }); }
+    return out;
+  }
   function questionsOf(sel, exam) {
     const d = store(sel, exam);
-    if (!Array.isArray(d.questions)) {
-      d.questions = tbl("questions").filter((q) => sameC(q, sel) && T.s(q.assessment).trim() === exam && T.s(q.question_id).trim() && !ONE01.has(T.s(q.question_type).toUpperCase().replace(/ /g, "")))
-        .map((q) => [T.s(q.question_id).trim(), num(q.max_marks), (split(q.slos)[0] || split(q.clos)[0] || "")]);
-      S.save();
+    // Start with the rows that already have student marks (e.g. a sub-category typed as a total), if any. While the list is still the
+    // one made here (d.auto) and none of its rows has marks, it follows the rows that get marks later on the Student marks page.
+    const typed = () => new Set(marksOf(sel, exam).filter((r) => num(r.marks_awarded) !== null).map((r) => T.s(r.question_id).toUpperCase()));
+    if (!Array.isArray(d.questions) || (d.auto && d.questions.length && !d.questions.some((q) => typed().has(T.s(q[0]).toUpperCase())))) {
+      const c = partialCandidates(sel, exam), t = typed(), ready = c.filter((x) => t.has(x.row[0].toUpperCase()));
+      const next = (ready.length ? ready : c).map((x) => x.row.slice());
+      if (!Array.isArray(d.questions) || JSON.stringify(next) !== JSON.stringify(d.questions)) { d.questions = next; d.auto = true; S.save(); }
     }
     return d.questions;
   }
+  const qLabel = (q) => (T.s(q).toUpperCase() === "TOTAL" ? "Whole assessment" : T.s(q));
   const usable = (sel, exam) => questionsOf(sel, exam).filter((q) => clean(q[0])).map((q) => [clean(q[0]), num(q[1]), clean(q[2])]);
   /** TAMA's _iap_outcome_results. */
   function outcomeResults(sel, exam) {
@@ -217,14 +234,19 @@
     const opts = [...tbl("slos").filter((r) => sameC(r, sel)).map((r) => T.s(r.slo_id)), ...tbl("clos").filter((r) => sameC(r, sel)).map((r) => T.s(r.clo_id))].filter(Boolean);
     const optHtml = (cur) => `<option value="" ${cur ? "" : "selected"}>—</option>${opts.map((o) => `<option ${o === cur ? "selected" : ""}>${esc(o)}</option>`).join("")}`;
     const qTable = `<div class="bp-wrap"><table class="tbl ip-q" style="max-width:640px"><thead><tr><th>Question</th><th class="num" style="width:110px">Full mark</th><th style="width:150px">Linked SLO / CLO</th><th style="width:34px"></th></tr></thead><tbody>
-      ${qs.map((q, i) => `<tr><td><input class="cell" data-ipq="${i}" data-c="0" data-ref="ipq:${i}:0" value="${esc(q[0])}" placeholder="e.g. Q21, Essay 1, Station 3"></td>
+      ${qs.map((q, i) => `<tr><td><input class="cell" data-ipq="${i}" data-c="0" data-ref="ipq:${i}:0" value="${esc(q[0])}" placeholder="e.g. Q21, Essay 1, Station 3" title="TOTAL = the whole assessment (its total mark)"></td>
         <td><input class="cell num-in" inputmode="decimal" data-ipq="${i}" data-c="1" data-ref="ipq:${i}:1" value="${esc(g2(num(q[1])))}"></td>
         <td><select class="cell" data-ipq="${i}" data-c="2">${optHtml(T.s(q[2]))}</select></td><td class="ctr"><button class="x-btn" data-ipx="${i}" title="Delete this question">×</button></td></tr>`).join("")}
       <tr><td colspan="4"><button class="btn sm" id="ip-add">+ Add a question</button></td></tr></tbody></table></div>`;
+    const have = new Set(qs.map((q) => clean(q[0]).toUpperCase()));
+    const missing = partialCandidates(sel, exam).filter((c) => !have.has(c.row[0].toUpperCase()));
+    const typed = new Set(marksOf(sel, exam).filter((r) => num(r.marks_awarded) !== null).map((r) => T.s(r.question_id).toUpperCase()));
+    const noMarks = qs.filter((q) => clean(q[0]) && !typed.has(clean(q[0]).toUpperCase())).map((q) => qLabel(q[0]));
+    const addHtml = missing.length ? `<div class="ip-addc"><span class="note">Also available, with the marks typed on the Student marks page:</span> ${missing.map((c, i) => `<button class="btn xs" data-ipc="${i}">+ ${esc(c.row[0] === "TOTAL" ? `The whole assessment (${g2(c.row[1])} marks)` : `${c.row[0]} (${c.why}${c.row[1] !== null ? `, ${g2(c.row[1])} marks` : ""})`)}</button>`).join(" ")}</div>` : "";
     const use = usable(sel, exam);
     let marksHtml = "", resHtml = "";
     if (use.length) {
-      const qids = use.map((q) => q[0]), cols = use.map((q) => [q[0], q[1], q[0]]);
+      const qids = use.map((q) => q[0]), cols = use.map((q) => [q[0], q[1], qLabel(q[0])]);
       const g = grids[ek] && grids[ek].sig === qids.join("|") ? grids[ek] : (grids[ek] = Object.assign({ sig: qids.join("|") }, T.marksRows(sel, exam, qids)));
       marksHtml = `<h3 class="qm-h">b) The students' marks in these questions</h3>
         <p class="note">These are the same marks as on the Student marks page, so you type them once.${g.from ? ` The students come from ${esc(g.from)}; add or delete rows as needed.` : ""}</p>
@@ -250,12 +272,13 @@
     }
     el.innerHTML = `<div class="sec-head" id="h-irpart"><div><h2>Assessments and questions with partial marks</h2><p class="sub">For the questions of ${esc(exam)} that are not right / wrong (essay, short answer ...), or for a whole assessment marked with partial marks (OSCE, project, presentation, assignment ...): the pre-set KPI "X% of the students score Y% or more" is checked for each SLO / CLO.</p></div></div>
       <h3 class="qm-h">a) Which questions or parts have partial marks?</h3>
-      <p class="note">One row per question, station, criterion or part (for a project or presentation: one row per criterion of its rubric, or one row for the whole assessment). Type its full mark and choose the SLO or CLO it measures. Questions from the Exam builder that are not MCQ are listed for you.</p>
-      ${qTable}${use.length ? "" : `<p class="note">Add the questions or parts with partial marks in the table above to go on.</p>`}${marksHtml}${resHtml}`;
+      <p class="note">One row per question, station, criterion or part (for a project or presentation: one row per criterion of its rubric, or one row for the whole assessment). Type its full mark and choose the SLO or CLO it measures. Questions from the Exam builder that are not MCQ, the sub-categories marked with partial marks, and (for an assessment with no questions) the whole assessment, written TOTAL, are listed for you with the marks already typed on the Student marks page.</p>
+      ${qTable}${addHtml}${noMarks.length && use.length ? `<p class="warn-text">No student marks yet for: ${esc(noMarks.join(", "))}. Type them below${missing.length ? ", or add the row above that already has marks (and delete this one)" : ""}.</p>` : ""}${use.length ? "" : `<p class="note">Add the questions or parts with partial marks in the table above to go on.</p>`}${marksHtml}${resHtml}`;
     const redo = () => T.refresh("irPart");
-    $$("[data-ipq]", el).forEach((f) => f.onchange = () => { const q = qs[+f.dataset.ipq], c = +f.dataset.c; q[c] = c === 1 ? num(f.value) : clean(f.value); S.save(); T.toast("Questions saved"); redo(); });
-    $$("[data-ipx]", el).forEach((b) => b.onclick = () => { qs.splice(+b.dataset.ipx, 1); S.save(); redo(); });
-    $("#ip-add", el).onclick = () => { qs.push(["", null, ""]); S.save(); redo(); };
+    $$("[data-ipq]", el).forEach((f) => f.onchange = () => { delete d.auto; const q = qs[+f.dataset.ipq], c = +f.dataset.c; q[c] = c === 1 ? num(f.value) : clean(f.value); S.save(); T.toast("Questions saved"); redo(); });
+    $$("[data-ipx]", el).forEach((b) => b.onclick = () => { delete d.auto; qs.splice(+b.dataset.ipx, 1); S.save(); redo(); });
+    $("#ip-add", el).onclick = () => { delete d.auto; qs.push(["", null, ""]); S.save(); redo(); };
+    $$("[data-ipc]", el).forEach((b) => b.onclick = () => { delete d.auto; qs.push(missing[+b.dataset.ipc].row.slice()); S.save(); redo(); });
     $$("[data-ipk]", el).forEach((f) => f.onchange = () => {
       const oid = f.dataset.ipk, cur = kpiOf(sel, oid, exam), v = Math.max(0, Math.min(100, num(f.value) ?? cur[+f.dataset.w]));
       cur[+f.dataset.w] = v; (d.kpi = d.kpi || {})[oid] = cur; S.save(); redo();
