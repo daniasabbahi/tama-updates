@@ -451,8 +451,8 @@
       const filled = g.rows.filter((r) => clean(r.sid) || clean(r.nm)), have = new Set(filled.map((r) => (clean(r.sid) || clean(r.nm)).toLowerCase()));
       const missCl = T.classList(sel).list.filter((r) => !have.has((r.sid || r.nm).toLowerCase()));
       const setRoster = (list) => { (ui().xm_roster = ui().xm_roster || {})[ek] = list.map((r) => [clean(r.sid), clean(r.nm)]); delete grids[`mk|${ek}`]; delete grids[ek]; S.save(); T.refresh("irMarks", "irPart"); };
-      const tools = filled.length > 1 || missCl.length ? `<div class="xm-tools">${filled.length > 1 ? `<span class="lbl">Sort the students by</span><div class="seg">${SORTS.filter((x) => hasG || !["m", "f"].includes(x[0])).map(([v, l]) => `<button data-xms="${v}">${l}</button>`).join("")}</div>` : ""}
-          ${missCl.length ? `<button class="btn sm" id="xm-addcl">+ Add the ${missCl.length} student${missCl.length > 1 ? "s" : ""} of the student list who ${missCl.length > 1 ? "are" : "is"} not here</button>` : ""}</div>` : "";
+      const tools = filled.length < 2 && !missCl.length ? `<p class="note">Add the students in the <b>Student list</b> above (upload it once) and the sort buttons (Student ID, Name, Male first, Female first) appear here.</p>` : `<div class="xm-tools">${filled.length > 1 ? `<span class="lbl">Sort the students by</span><div class="seg">${SORTS.filter((x) => hasG || !["m", "f"].includes(x[0])).map(([v, l]) => `<button data-xms="${v}">${l}</button>`).join("")}</div>` : ""}
+          ${missCl.length ? `<button class="btn sm" id="xm-addcl">+ Add the ${missCl.length} student${missCl.length > 1 ? "s" : ""} of the student list who ${missCl.length > 1 ? "are" : "is"} not here</button>` : ""}</div>`;
       body = `<h3 class="qm-h">Student marks in ${esc(exam)}</h3>
         ${qs.length ? `<div class="fld"><span class="lbl">How do you want to enter the marks? <i class="hint" title="Each question: the CLOs and SLOs of each question come from the Exam builder. Total only: the CLOs and SLOs come from the ticks on the Assessment plan page.">?</i></span>
           <div class="seg">${MODES.map(([v, l]) => `<button class="${mode === v ? "on" : ""}" data-xmm="${v}">${l}</button>`).join("")}</div></div>`
@@ -625,7 +625,7 @@
     };
   };
 
-  T.marksParts = { readUpload, outcomeResults, kpiOf, readList, gNorm, sortRows };
+  T.marksParts = { readUpload, outcomeResults, kpiOf, readList, gNorm, sortRows, cas, examQuestions, partsOf, marked, genderMap, gOf };
   T.renderMarksPage = function (sel) {
     const content = $("#content");
     if (!sel) {

@@ -599,3 +599,38 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .xl-tbl th.ctr { text-align: center; }
 .kcard.g-m .big { color: var(--navy); }
 .kcard.g-f .big { color: var(--mauve-dark); }
+/* course mark sheet + CLO achievement (2026-11-22) */
+.btn.xs { min-height: 26px; padding: 0 10px; font-size: 12px; }
+.ch2 { margin: 8px 0 12px; }
+.ch2 .ch-scroll { overflow-x: auto; }
+.ch-foot { display: flex; justify-content: flex-end; margin-top: 4px; }
+.ch-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--navy); margin: 2px 0 6px; }
+.ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ch-legend i { display: inline-block; width: 14px; height: 12px; border-radius: 3px; }
+.ms-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; align-items: start; }
+.ms-tbl th, .ms-tbl td { vertical-align: middle; white-space: nowrap; }
+.ms-tbl th.ms-a, .ms-tbl th.ms-f { white-space: normal; min-width: 76px; }
+.ms-tbl th .mg-out { display: block; font-size: 11px; font-weight: 500; color: var(--soft); }
+.ms-tbl td.ms-f { background: #e9f0fa; color: var(--navy); }
+.ms-tbl td.ms-miss { color: #b45309; background: #fff7ed; }
+.ms-tbl td.ms-fail { background: #fde7cf; color: #8a4b00; }
+.ms-tbl tr.ms-out td { background: #fdf0e1; color: #7a4a00; }
+.ms-tbl select.cell { min-width: 124px; }
+.ms-st th, .ms-st td { text-align: center; vertical-align: middle; }
+.ms-st td:first-child, .ms-st th:first-child { text-align: left; }
+.ms-st tr.tot td { background: var(--cream); font-weight: 600; }
+.ms-k { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.cl-route { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; margin: 10px 0; }
+.cl-steps { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; font-size: 13.5px; }
+.cl-step { display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; color: #3b4a5f; }
+.cl-tick { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--field); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--soft); }
+.cl-step.ok .cl-tick { background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.cl-tbl th, .cl-tbl td, .cl-rep th, .cl-rep td { vertical-align: middle; }
+.cl-tbl th .mg-out, .cl-rep .mg-out { display: block; font-size: 11px; font-weight: 500; color: var(--soft); }
+.cl-tbl td.cl-txt, .cl-rep td.cl-txt, .xs-tbl td.cl-txt { min-width: 220px; max-width: 420px; white-space: normal; font-size: 13px; }
+.cl-heat td, .cl-heat th { white-space: nowrap; }
+.cl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-tick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; background: #fff; cursor: pointer; }
+.cl-rep textarea.cell { width: 100%; min-height: 44px; resize: vertical; }
+.chip-tick input, .xs-tbl input[type=checkbox] { width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; flex: 0 0 auto; accent-color: var(--mauve); }
+.cl-rep input.cell { min-width: 150px; }

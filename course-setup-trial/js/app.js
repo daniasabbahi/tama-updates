@@ -84,6 +84,10 @@
       jump: [["h-irtest", "Choose the test"], ["h-irmcq", "MCQ item analysis"], ["h-irslo", "Results by SLO"], ["h-irpart", "Partial marks"]] },
     "student-marks": { name: "Student marks", sub: "The marks each student got in each test or assessment: per question, as one total, or per sub-category, with the mark on the paper converted for you. Everything saves itself.",
       jump: [["h-irmk", "Assessments"], ["h-xmlist", "Student list"], ["h-xmexam", "Enter the marks"]] },
+    "clo-achievement": { name: "CLO achievement", sub: "How well each CLO reached its target: from the item analysis (difficulty factor), from the students' marks, or both side by side. Everything saves itself.",
+      jump: [["h-clm", "Method"], ["h-clres", "Results"], ["h-clch", "Charts"], ["h-cldet", "Details"], ["h-clrep", "For the course report"]] },
+    "mark-sheet": { name: "Course mark sheet", sub: "All the marks of the course in one sheet, with withdrawn students, the discipline of postgraduate students, statistics and charts. Everything saves itself.",
+      jump: [["h-mssrc", "Where the marks come from"], ["h-mssheet", "Mark sheet"], ["h-msstats", "Statistics and charts"], ["h-msrep", "For the course report"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {
@@ -127,13 +131,15 @@
     const valid = cur && (cur === NEW || codes().includes(cur));
     if (cur && !valid) { S.ui.current = null; S.saveUi(); }
     const c = valid ? cur : null;
-    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks";
+    const slo = T.page() === "lectures-slos" || T.page() === "assessment-plan" || T.page() === "exam-blueprint" || T.page() === "exam-results" || T.page() === "student-marks" || T.page() === "clo-achievement" || T.page() === "mark-sheet";
     $("#crumb-course").textContent = c && c !== NEW ? S.courseLabel(c) : (c === NEW && !slo ? "New course" : "");
     $("#jump").hidden = !(c && c !== NEW);
     if (T.page() === "assessment-plan") { T.renderPlanPage(c === NEW ? null : c); return; }
     if (T.page() === "exam-blueprint") { T.renderBlueprintPage(c === NEW ? null : c); return; }
     if (T.page() === "exam-results") { T.renderResultsPage(c === NEW ? null : c); return; }
     if (T.page() === "student-marks") { T.renderMarksPage(c === NEW ? null : c); return; }
+    if (T.page() === "clo-achievement") { T.renderCloPage(c === NEW ? null : c); return; }
+    if (T.page() === "mark-sheet") { T.renderMarkSheetPage(c === NEW ? null : c); return; }
     if (slo) { T.renderSloPage(c === NEW ? null : c); return; }
     if (!c) {
       $("#content").innerHTML = `<div class="empty-state"><div class="empty-icon">📘</div>
