@@ -634,3 +634,11 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .cl-rep textarea.cell { width: 100%; min-height: 44px; resize: vertical; }
 .chip-tick input, .xs-tbl input[type=checkbox] { width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; flex: 0 0 auto; accent-color: var(--mauve); }
 .cl-rep input.cell { min-width: 150px; }
+/* readable CLO tables (Dania 2026-11-22: "not readable table") */
+.cl-tbl th, .cl-tbl td, .cl-heat th, .cl-heat td, .cl-rep th, .cl-rep td, .cl-hand th, .cl-hand td { overflow-wrap: normal; word-break: normal; }
+.cl-hand th.cl-st, .cl-hand td.cl-txt { width: 300px; min-width: 300px; max-width: 300px; }
+.cl-hand th.cl-vh { height: 240px; vertical-align: bottom; padding: 6px 2px; text-align: center; width: 74px; min-width: 74px; }
+.cl-hand th.cl-vh span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; max-height: 228px; overflow: visible; font-size: 11.5px; text-align: left; line-height: 1.15; white-space: normal; }
+.cl-hand td input.cell { width: 64px !important; min-width: 0 !important; max-width: 64px; text-align: center; padding-left: 4px; padding-right: 4px; }
+.cl-hand td { vertical-align: middle; }
+.cl-heat th { white-space: normal; min-width: 80px; max-width: 140px; }

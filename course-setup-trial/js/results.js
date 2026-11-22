@@ -27,7 +27,7 @@
   const FORMATS = [[FMT_CTR, "Condensed Test Report (PDF)", "From the correcting machine"], [FMT_QM, "Question Mark (PDF)", "Online exam"], [FMT_MAN, "Type the values", "Or paste them from Excel"]];
   const EASY_ABOVE = 0.8, DIFFICULT_BELOW = 0.3, LOW_DISC = 0.2, GOOD_DISC = 0.3, VERY_EASY = 0.9;
   const ONE01 = new Set(["MCQ", "TRUE/FALSE", "T/F", "TF", "MATCHING", "SBA", "EMQ", "", "NAN", "NONE"]);
-  const K_MCQ = "MCQ (correct or not correct: 0/1 marks)", K_PART = "Questions with partial marks (essay, short answer, OSCE ...)";
+  const K_MCQ = "MCQ (correct or not correct: 0/1 marks)", K_PART = "Assessments and questions with partial marks (essay, short answer, OSCE, project, presentation ...)";
   const levelOf = (p) => (p === null ? "—" : p < DIFFICULT_BELOW ? "Difficult" : p > EASY_ABOVE ? "Easy" : "Acceptable");
   function flagsOf(it) {
     const f = [];
@@ -209,7 +209,7 @@
           ${ex.map((o) => `<option value="${esc(o)}" ${o === exam ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></label>
       </div>
       ${ex.length ? "" : `<div class="info-box"><span>This course has no assessments yet. Add them in the <b>Summative assessment</b> table of the Assessment plan.</span><a class="btn sm" href="#assessment-plan">Go to Assessment plan</a></div>`}
-      ${exam ? `<div class="fld"><span class="lbl">Step 2: What type of questions does this test have? (tick one or both)</span>
+      ${exam ? `<div class="fld"><span class="lbl">Step 2: What type of questions or marking does this assessment have? (tick one or both)</span>
           <div class="row-btns ir-kinds"><label class="tick-line"><input type="checkbox" data-irk="mcq" ${kinds.includes("mcq") ? "checked" : ""}> ${esc(K_MCQ)}</label>
           <label class="tick-line"><input type="checkbox" data-irk="partial" ${kinds.includes("partial") ? "checked" : ""}> ${esc(K_PART)}</label></div></div>
         ${kinds.length ? (kinds.length === 2 ? `<p class="note">This test has both types: fill in both parts below. Both results go to CLO achievement.</p>` : "") : `<p class="warn-text">Tick the type of questions of this test to see the next step.</p>`}` : `<p class="note">Choose the test in <b>Step 1</b>. <b>Step 2</b> then asks the type of its questions: MCQ (the item analysis report), or questions with partial marks such as essay or OSCE (the KPI calculation).</p>`}`;

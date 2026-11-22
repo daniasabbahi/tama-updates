@@ -248,10 +248,10 @@
               <p class="note">KPI = ${g2(r.x)}% of the students score ${g2(r.y)}% or more. Starts from the CLO's Target % and Student score threshold in Course setup (or the SLO's Target KPI); change it here for this test only.</p></div></div>`; }).join("")
         + `<p class="note">Each student's % = Grade × 100 ÷ Total mark. Achieved KPI = students who scored the KPI score or more × 100 ÷ all students. % of KPI Achievement = Achieved KPI × 100 ÷ the KPI %. The Achieved KPI goes to CLO achievement with the item analysis results.</p>`);
     }
-    el.innerHTML = `<div class="sec-head" id="h-irpart"><div><h2>Questions with partial marks</h2><p class="sub">For ${esc(exam)} questions that are not right / wrong (essay, short answer, OSCE station ...): the pre-set KPI "X% of the students score Y% or more" is checked for each SLO / CLO.</p></div></div>
-      <h3 class="qm-h">a) Which questions have partial marks?</h3>
-      <p class="note">One row per question (or per station / part). Type its full mark and choose the SLO or CLO it measures. Questions from the Exam builder that are not MCQ are listed for you.</p>
-      ${qTable}${use.length ? "" : `<p class="note">Add the questions with partial marks in the table above to go on.</p>`}${marksHtml}${resHtml}`;
+    el.innerHTML = `<div class="sec-head" id="h-irpart"><div><h2>Assessments and questions with partial marks</h2><p class="sub">For the questions of ${esc(exam)} that are not right / wrong (essay, short answer ...), or for a whole assessment marked with partial marks (OSCE, project, presentation, assignment ...): the pre-set KPI "X% of the students score Y% or more" is checked for each SLO / CLO.</p></div></div>
+      <h3 class="qm-h">a) Which questions or parts have partial marks?</h3>
+      <p class="note">One row per question, station, criterion or part (for a project or presentation: one row per criterion of its rubric, or one row for the whole assessment). Type its full mark and choose the SLO or CLO it measures. Questions from the Exam builder that are not MCQ are listed for you.</p>
+      ${qTable}${use.length ? "" : `<p class="note">Add the questions or parts with partial marks in the table above to go on.</p>`}${marksHtml}${resHtml}`;
     const redo = () => T.refresh("irPart");
     $$("[data-ipq]", el).forEach((f) => f.onchange = () => { const q = qs[+f.dataset.ipq], c = +f.dataset.c; q[c] = c === 1 ? num(f.value) : clean(f.value); S.save(); T.toast("Questions saved"); redo(); });
     $$("[data-ipx]", el).forEach((b) => b.onclick = () => { qs.splice(+b.dataset.ipx, 1); S.save(); redo(); });
