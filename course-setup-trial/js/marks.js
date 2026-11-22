@@ -24,6 +24,7 @@
     cur.forEach((r) => { if (clean(r.student_name)) names[T.s(r.student_id)] = clean(r.student_name); });
     let roster = ((ui().xm_roster || {})[ek] || []).map((x) => [T.s(x[0]), T.s(x[1])]), from = "";
     if (!roster.length) roster = [...new Set(cur.map((r) => T.s(r.student_id)))].map((s) => [s, names[s] || ""]);
+    if (!roster.length) { const cl = T.classList(sel); if (cl.list.length) { roster = cl.list.map((r) => [r.sid, r.nm]); from = cl.from || "the student list"; } }
     if (!roster.length) for (const [k2, r2] of Object.entries(ui().xm_roster || {})) {
       if (k2.startsWith(`${sel}||`) && k2 !== ek && r2 && r2.length) { roster = r2.map((x) => [T.s(x[0]), T.s(x[1])]); from = k2.split("||")[1]; break; }
     }
@@ -80,12 +81,12 @@
     const { cols, rows, id } = o;
     if (!rows.length || rows.some((r) => clean(r.sid) || clean(r.nm)) && !rows.slice(-1).every((r) => !clean(r.sid) && !clean(r.nm))) rows.push(...Array.from({ length: rows.length ? 1 : 10 }, () => ({ sid: "", nm: "", v: {}, pm: {} })));
     const P = o.pair, rs = P ? ' rowspan="2"' : "";
-    const head = P ? `<tr><th style="width:36px"${rs}>#</th><th style="width:96px"${rs}>Student ID</th><th style="width:150px"${rs}>Student name</th>${cols.map(([q, mx, l]) => `<th class="mg-grp" colspan="2">${esc(l || q)}</th>`).join("")}${o.calc ? `<th class="mg-tot-h" style="width:92px"${rs}>${esc(o.calc.label)}${o.calc.out !== undefined ? `<span class="mg-out">out of ${g2(o.calc.out)}</span>` : ""}</th>` : ""}<th style="width:34px"${rs}></th></tr>
+    const head = P ? `<tr><th style="width:36px"${rs}>#</th><th style="width:96px"${rs}>Student ID</th><th style="width:150px"${rs}>Student name</th>${o.gender ? `<th class="ctr" style="width:58px"${rs}>Gender</th>` : ""}${cols.map(([q, mx, l]) => `<th class="mg-grp" colspan="2">${esc(l || q)}</th>`).join("")}${o.calc ? `<th class="mg-tot-h" style="width:92px"${rs}>${esc(o.calc.label)}${o.calc.out !== undefined ? `<span class="mg-out">out of ${g2(o.calc.out)}</span>` : ""}</th>` : ""}<th style="width:34px"${rs}></th></tr>
       <tr>${cols.map((c, j) => { const a = P.a(j), b = P.b(j); return `<th class="mg-sub mg-first" style="width:82px">${esc(a[0])}<span class="mg-out">out of ${g2(a[1])}</span></th><th class="mg-sub mg-conv" style="width:82px">${esc(b[0])}<span class="mg-out">out of ${g2(b[1])}</span></th>`; }).join("")}</tr>`
-      : `<tr><th style="width:36px">#</th><th style="width:130px">Student ID</th><th style="width:200px">Student name</th>${cols.map(([q, mx, l]) => `<th class="num" style="width:96px">${esc(l || q)}${mx !== null && mx !== undefined && !isNaN(mx) ? ` <span class="muted">(out of ${g2(mx)})</span>` : ""}</th>`).join("")}${o.calc ? `<th class="num" style="width:110px">${esc(o.calc.label)}</th>` : ""}<th style="width:34px"></th></tr>`;
+      : `<tr><th style="width:36px">#</th><th style="width:130px">Student ID</th><th style="width:200px">Student name</th>${o.gender ? '<th class="ctr" style="width:58px">Gender</th>' : ""}${cols.map(([q, mx, l]) => `<th class="num" style="width:96px">${esc(l || q)}${mx !== null && mx !== undefined && !isNaN(mx) ? ` <span class="muted">(out of ${g2(mx)})</span>` : ""}</th>`).join("")}${o.calc ? `<th class="num" style="width:110px">${esc(o.calc.label)}</th>` : ""}<th style="width:34px"></th></tr>`;
     const body = rows.map((r, i) => `<tr><td class="ro muted">${i + 1}</td>
       <td><input class="cell" data-mg="${id}" data-r="${i}" data-c="sid" data-ref="mg:${id}:${i}:sid" value="${esc(r.sid)}"></td>
-      <td><input class="cell" data-mg="${id}" data-r="${i}" data-c="nm" data-ref="mg:${id}:${i}:nm" value="${esc(r.nm)}"></td>
+      <td><input class="cell" data-mg="${id}" data-r="${i}" data-c="nm" data-ref="mg:${id}:${i}:nm" value="${esc(r.nm)}"></td>${o.gender ? `<td class="ctr ro">${esc(o.gender(r))}</td>` : ""}
       ${cols.map(([q], j) => `<td class="${P ? "mg-first" : ""}"><input class="cell num-in ${r.v[q] !== null && r.v[q] !== undefined ? "filled" : ""}" inputmode="decimal" data-mg="${id}" data-r="${i}" data-c="${j}" data-ref="mg:${id}:${i}:${j}" value="${esc(g2(r.v[q]))}"></td>${P ? `<td class="mg-conv" data-mgpair="${i}:${j}">${esc(g2(P.f(j, r)))}</td>` : ""}`).join("")}
       ${o.calc ? `<td class="${P ? "mg-tot" : "ro num"}" data-mgcalc="${i}">${esc(g2(o.calc.f(r)))}</td>` : ""}
       <td class="ctr">${clean(r.sid) || clean(r.nm) ? `<button class="x-btn" data-mgx="${id}" data-r="${i}" title="Delete this student">×</button>` : ""}</td></tr>`).join("");
@@ -446,6 +447,12 @@
       long.forEach((r) => { const s = T.s(r.student_id), v = num(r.marks_awarded), cap = caps[T.s(r.question_id)]; totBy[s] = (totBy[s] || 0) + v; clipBy[s] = (clipBy[s] || 0) + Math.min(Math.max(v, 0), cap === null || cap === undefined ? v : cap); });
       const nS = Object.keys(totBy).length, avg = nS ? Object.values(totBy).reduce((a, b) => a + b, 0) / nS : null, avgP = nS && fullT > 0 ? Object.values(clipBy).reduce((a, b) => a + b, 0) / nS / fullT * 100 : null;
       const clo = byClo(sel, exam, mode, fullT), cloIds = tbl("clos").filter((r) => sameC(r, sel)).length;
+      const gm = genderMap(sel), hasG = Object.keys(gm).length > 0, gfn = (r) => gOf(gm, r);
+      const filled = g.rows.filter((r) => clean(r.sid) || clean(r.nm)), have = new Set(filled.map((r) => (clean(r.sid) || clean(r.nm)).toLowerCase()));
+      const missCl = T.classList(sel).list.filter((r) => !have.has((r.sid || r.nm).toLowerCase()));
+      const setRoster = (list) => { (ui().xm_roster = ui().xm_roster || {})[ek] = list.map((r) => [clean(r.sid), clean(r.nm)]); delete grids[`mk|${ek}`]; delete grids[ek]; S.save(); T.refresh("irMarks", "irPart"); };
+      const tools = filled.length > 1 || missCl.length ? `<div class="xm-tools">${filled.length > 1 ? `<span class="lbl">Sort the students by</span><div class="seg">${SORTS.filter((x) => hasG || !["m", "f"].includes(x[0])).map(([v, l]) => `<button data-xms="${v}">${l}</button>`).join("")}</div>` : ""}
+          ${missCl.length ? `<button class="btn sm" id="xm-addcl">+ Add the ${missCl.length} student${missCl.length > 1 ? "s" : ""} of the student list who ${missCl.length > 1 ? "are" : "is"} not here</button>` : ""}</div>` : "";
       body = `<h3 class="qm-h">Student marks in ${esc(exam)}</h3>
         ${qs.length ? `<div class="fld"><span class="lbl">How do you want to enter the marks? <i class="hint" title="Each question: the CLOs and SLOs of each question come from the Exam builder. Total only: the CLOs and SLOs come from the ticks on the Assessment plan page.">?</i></span>
           <div class="seg">${MODES.map(([v, l]) => `<button class="${mode === v ? "on" : ""}" data-xmm="${v}">${l}</button>`).join("")}</div></div>`
@@ -466,11 +473,14 @@
         ${other.length ? `<p class="warn-text">${esc(exam)} already has marks entered as <b>${mode === "q" ? MODES[1][1] : MODES[0][1]}</b> (${new Set(other.map((r) => T.s(r.student_id))).size} students). They will be replaced as soon as you type marks here.</p>` : ""}
         ${g.from ? `<p class="note">The ${g.rows.length} students come from ${esc(g.from)}. Add or delete rows as needed.</p>` : ""}
         ${byParts || usePaper ? `<div class="def-box"><b>Type the marks on the paper.</b> For each student, type the mark exactly as it was corrected on the paper${byParts ? " in the On the paper column of each sub-category" : ` (out of ${fx(paper)})`}. The shaded <b>Grade</b> column next to it shows what that mark is worth in the real grade${byParts ? `, and the <b>Total grade</b> (out of ${fx(fullT)}) adds them up` : ""}. Both are worked out for you.</div>` : ""}
-        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, pair, calc: byParts ? { label: "Total grade", out: fullT, f: partsSum } : null })}
+        ${tools}
+        ${T.marksGridHtml({ id: "xm", cols, rows: g.rows, pair, gender: hasG ? gfn : null, calc: byParts ? { label: "Total grade", out: fullT, f: partsSum } : null })}
         ${nS && fullT > 0 ? `<div class="kcards">${[["Students with marks", nS], ["Average mark", `${fx(avg)} <small>/ ${fx(fullT)}</small>`], ["Average (%)", `${fx(avgP)}%`]].map(([l, v]) => `<div class="kcard"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>
           ${clo.length ? `<h3 class="qm-h">These marks by CLO</h3><div class="bp-wrap"><table class="tbl" style="max-width:420px"><thead><tr><th>CLO</th><th class="num">Average share of the marks (%)</th></tr></thead><tbody>${clo.map(([c, v]) => `<tr><td><b>${esc(c)}</b></td><td class="num">${fx(v)}</td></tr>`).join("")}</tbody></table></div>`
             : cloIds ? `<div class="info-box"><span>No CLO is linked to these marks yet. ${mode === "q" ? "Link the questions to CLOs in the Exam builder." : `Tick <b>${esc(exam)}</b> for its CLOs on the Assessment plan page.`}</span></div>` : ""}` : ""}`;
       top.innerHTML = head(); el.innerHTML = pick() + body; wirePick();
+      $$("[data-xms]", el).forEach((b) => b.onclick = () => { setRoster(sortRows(filled, b.dataset.xms, gfn)); T.toast(`Sorted by ${SORTS.find((x) => x[0] === b.dataset.xms)[1].toLowerCase()}`); });
+      const ac = $("#xm-addcl", el); if (ac) ac.onclick = () => { setRoster(filled.concat(missCl)); T.toast(`${missCl.length} student(s) added from the student list`); };
       $$("[data-xmm]", el).forEach((b) => b.onclick = () => { ui().xm_mode[ek] = b.dataset.xmm; S.save(); T.refresh("irMarks"); });
       $$("[data-xpp]", el).forEach((f) => f.onchange = () => { const all = ui().xm_paper_parts = ui().xm_paper_parts || {}, o = all[ek] = all[ek] || {}, v = num(f.value); if (v && v > 0) o[f.dataset.xpp] = v; else o[f.dataset.xpp] = undefined; S.save(); T.refresh("irMarks"); });
       const pp = $("#xm-paper", el); if (pp) pp.onchange = () => { (ui().xm_paper = ui().xm_paper || {})[ek] = Math.max(0, num(pp.value) || 0); S.save(); T.refresh("irMarks"); };
@@ -495,7 +505,127 @@
     }
   };
 
-  T.marksParts = { readUpload, outcomeResults, kpiOf };
+  /* ---------------------------------------------------------------- the student list of a course (uploaded once, Dania 2026-11-22)
+     ui_settings.xm_class[course] = [[id, name, gender]] with gender "M", "F" or "" (a new key: old TAMA ignores it).
+     Every test without its own students starts from this list. Without it, the students of the course mark sheet are used. */
+  function gNorm(v) {
+    const s = T.s(v).trim().toLowerCase(); if (!s) return "";
+    if (/^(f|female|girl|woman|w)\b/.test(s) || /^(أنثى|انثى|انثي|أنثي|طالبة|بنت|ف)/.test(s)) return "F";
+    if (/^(m|male|boy|man)\b/.test(s) || /^(ذكر|طالب|ولد|ذ)/.test(s)) return "M";
+    return "";
+  }
+  T.classList = function (sel) {
+    const own = (ui().xm_class || {})[sel];
+    if (Array.isArray(own) && own.length) return { list: own.map((x) => ({ sid: T.s(x[0]), nm: T.s(x[1]), gn: gNorm(x[2]) })), from: "" };
+    const rec = (S.data.mark_sheets || {})[String(sel)];
+    if (rec && Array.isArray(rec.rows)) {
+      const l = rec.rows.filter((x) => !x.withdrawn).map((x) => ({ sid: T.s(x.computer_no), nm: T.s(x.name), gn: gNorm(x.gender) })).filter((x) => x.sid || x.nm);
+      if (l.length) return { list: l, from: "the course mark sheet" };
+    }
+    return { list: [], from: "" };
+  };
+  const saveClass = (sel, list) => { (ui().xm_class = ui().xm_class || {})[sel] = list.filter((r) => clean(r.sid) || clean(r.nm)).map((r) => [clean(r.sid), clean(r.nm), r.gn || ""]); Object.keys(grids).forEach((k) => delete grids[k]); S.save(); };
+  function genderMap(sel) { const m = {}; T.classList(sel).list.forEach((r) => { if (r.gn) { if (r.sid) m["i:" + r.sid] = r.gn; if (r.nm) m["n:" + r.nm.toLowerCase()] = r.gn; } }); return m; }
+  const gOf = (m, r) => m["i:" + clean(r.sid)] || m["n:" + clean(r.nm).toLowerCase()] || "";
+  const SORTS = [["id", "Student ID"], ["name", "Name (A to Z)"], ["m", "Male first"], ["f", "Female first"]];
+  /** Sorts the students (empty rows are left out). Gender sorts keep the names in A to Z order inside each group. */
+  function sortRows(rows, how, gfn) {
+    const cmp = (a, b) => T.s(a).localeCompare(T.s(b), undefined, { numeric: true, sensitivity: "base" });
+    const rank = (g) => ((how === "m" ? { M: 0, F: 1 } : { F: 0, M: 1 })[g] ?? 2);
+    const byId = (a, b) => (!clean(a.sid)) - (!clean(b.sid)) || cmp(clean(a.sid), clean(b.sid)), byNm = (a, b) => (!clean(a.nm)) - (!clean(b.nm)) || cmp(clean(a.nm), clean(b.nm));
+    return rows.filter((r) => clean(r.sid) || clean(r.nm)).sort((a, b) => how === "id" ? byId(a, b) || byNm(a, b) : how === "name" ? byNm(a, b) || byId(a, b) : rank(gfn(a)) - rank(gfn(b)) || byNm(a, b) || byId(a, b));
+  }
+  /** Reads a student list file: a header row with Student ID / Student name / Gender (English or Arabic), then one row per student. */
+  function readList(raw) {
+    raw = raw.filter((r) => r.some((c) => clean(c)));
+    const low = (v) => T.s(v).toLowerCase().replace(/\s+/g, " ").trim();
+    const isId = (h) => h === "id" || h === "no" || h === "no." || /student ?(id|no|number|#)|computer|university|\bid\b|رقم|الرقم/.test(h);
+    const isNm = (h) => /name|الاسم|اسم/.test(h), isG = (h) => /gender|sex|الجنس|النوع/.test(h);
+    let hdr = -1;
+    for (let i = 0; i < Math.min(raw.length, 15); i++) { const h = raw[i].map(low); if (h.some(isNm) || h.some(isId)) { hdr = i; break; } }
+    if (hdr < 0) return { err: "I could not find a header row with 'Student ID' or 'Student name'." };
+    const h = raw[hdr].map(low), cNm = h.findIndex(isNm), cId = h.findIndex((x, j) => j !== cNm && isId(x)), cG = h.findIndex((x, j) => j !== cId && j !== cNm && isG(x));
+    if (cId < 0 && cNm < 0) return { err: "I could not find the Student ID or Student name column." };
+    const list = [], seen = new Set();
+    for (let i = hdr + 1; i < raw.length; i++) {
+      const r = raw[i]; let sid = cId >= 0 ? clean(r[cId]) : ""; if (/^\d+\.0$/.test(sid)) sid = sid.slice(0, -2);
+      const nm = cNm >= 0 ? clean(r[cNm]) : ""; if (!sid && !nm) continue;
+      const k = (sid || nm).toLowerCase(); if (seen.has(k)) continue; seen.add(k);
+      list.push({ sid, nm, gn: cG >= 0 ? gNorm(r[cG]) : "" });
+    }
+    if (!list.length) return { err: "I found the header row but no students under it." };
+    const nM = list.filter((r) => r.gn === "M").length, nF = list.filter((r) => r.gn === "F").length, nN = list.length - nM - nF;
+    return { list, note: `${list.length} students found${cG >= 0 ? ` (${nM} male, ${nF} female${nN ? `, ${nN} without a gender` : ""})` : ". There is no Gender column, so you can choose each student's gender in the list below"}.` };
+  }
+  const clsRows = {};
+  T.sections.xmList = function () {
+    const sel = T.current(), el = $("#sec-xmlist"); if (!el) return;
+    const cl = T.classList(sel);
+    let rows = clsRows[sel];
+    if (!rows) rows = clsRows[sel] = cl.list.map((r) => ({ ...r }));
+    if (!rows.length || clean(rows[rows.length - 1].sid) || clean(rows[rows.length - 1].nm)) rows.push(...Array.from({ length: rows.length ? 1 : 10 }, () => ({ sid: "", nm: "", gn: "" })));
+    const L = rows.filter((r) => clean(r.sid) || clean(r.nm)), nM = L.filter((r) => r.gn === "M").length, nF = L.filter((r) => r.gn === "F").length;
+    const open = S.ui.xlOpen === undefined ? !L.length : S.ui.xlOpen;
+    el.innerHTML = `<div class="sec-head" id="h-xmlist"><div><h2>Student list</h2><p class="sub">Upload the students of this course once (Student ID, name and gender). Every test then starts with this list, so you don't type the students again for each exam.</p></div></div>
+      <div class="row-btns"><label class="btn sm primary"><input type="file" id="xl-file" accept=".xlsx,.xls,.csv" hidden>Upload the student list (Excel or CSV)</label>
+        <button class="btn sm" id="xl-tpl">${L.length ? "Download the list (Excel)" : "Download an empty sheet to fill"}</button>
+        ${L.length && !cl.from ? `<button class="btn sm" id="xl-clear">Clear the list</button>` : ""}</div>
+      <p class="note">The file needs one row per student, with the columns <b>Student ID</b>, <b>Student name</b> and <b>Gender</b> (M or F). Arabic headings (<bdi>الرقم الجامعي، الاسم، الجنس</bdi>) work too.</p>
+      <div id="xl-prev"></div>
+      ${L.length ? `<div class="kcards">${[["Students", L.length, ""], ["Male (M)", nM, "g-m"], ["Female (F)", nF, "g-f"]].map(([l, v, c]) => `<div class="kcard ${c}"><div class="lab">${l}</div><div class="big">${v}</div></div>`).join("")}</div>` : ""}
+      ${cl.from ? `<p class="note">This list comes from ${esc(cl.from)}. Upload a file or change it here to keep your own list.</p>` : ""}
+      ${L.length > 1 ? `<div class="xm-tools"><span class="lbl">Sort the list by</span><div class="seg">${SORTS.map(([v, l]) => `<button data-xls="${v}">${l}</button>`).join("")}</div></div>` : ""}
+      <details class="sum-box" id="xl-box" ${open ? "open" : ""}><summary>${L.length ? `See or change the list (${L.length} students)` : "Or type the students by hand"}</summary>
+        <div class="bp-wrap" style="overflow-x:auto"><table class="tbl xl-tbl" style="max-width:640px"><thead><tr><th style="width:36px">#</th><th style="width:150px">Student ID</th><th>Student name</th><th class="ctr" style="width:90px">Gender</th><th style="width:34px"></th></tr></thead><tbody>
+        ${rows.map((r, i) => `<tr><td class="ro muted">${i + 1}</td>
+          <td><input class="cell" data-xl="sid" data-r="${i}" data-ref="xl:${i}:sid" value="${esc(r.sid)}"></td>
+          <td><input class="cell" data-xl="nm" data-r="${i}" data-ref="xl:${i}:nm" value="${esc(r.nm)}"></td>
+          <td class="ctr"><select class="cell" data-xl="gn" data-r="${i}" data-ref="xl:${i}:gn"><option value="" ${r.gn ? "" : "selected"}>-</option><option value="M" ${r.gn === "M" ? "selected" : ""}>M</option><option value="F" ${r.gn === "F" ? "selected" : ""}>F</option></select></td>
+          <td class="ctr">${clean(r.sid) || clean(r.nm) ? `<button class="x-btn" data-xlx="${i}" title="Remove this student from the list">×</button>` : ""}</td></tr>`).join("")}</tbody></table></div>
+        <div class="row-btns"><button class="btn sm" id="xl-add">+ Add 10 rows</button></div>
+        <p class="note">Paste from Excel: click a cell (for example the first Student ID) and press Ctrl+V. The list saves automatically. Tests that already have their students keep them; in each test you can add the students of this list who are missing.</p></details>`;
+    const after = () => { saveClass(sel, rows); delete clsRows[sel]; T.refresh("xmList", "irMarks", "irPart"); };
+    $("#xl-box", el).ontoggle = (e) => { S.ui.xlOpen = e.target.open; S.saveUi(); };
+    const ORDER = ["sid", "nm", "gn"];
+    const setCell = (i, c, v) => { while (rows.length <= i) rows.push({ sid: "", nm: "", gn: "" }); rows[i][c] = c === "gn" ? gNorm(v) : clean(v); };
+    $$("[data-xl]", el).forEach((f) => {
+      f.onchange = () => { setCell(+f.dataset.r, f.dataset.xl, f.value); after(); };
+      if (f.tagName === "INPUT") f.addEventListener("paste", (e) => {
+        const txt = (e.clipboardData || window.clipboardData).getData("text");
+        if (!txt || (!txt.includes("\t") && !/\n./.test(txt.replace(/\r?\n$/, "")))) return;
+        e.preventDefault();
+        const lines = txt.replace(/\r/g, "").replace(/\n$/, "").split("\n").map((l) => l.split("\t")), i0 = +f.dataset.r, c0 = ORDER.indexOf(f.dataset.xl);
+        lines.forEach((cells, r) => cells.forEach((v, c) => { const col = ORDER[c0 + c]; if (col) setCell(i0 + r, col, v); }));
+        T.toast(`Pasted ${lines.length} row(s)`); after();
+      });
+    });
+    $$("[data-xlx]", el).forEach((b) => b.onclick = () => { rows.splice(+b.dataset.xlx, 1); after(); });
+    $("#xl-add", el).onclick = () => { for (let k = 0; k < 10; k++) rows.push({ sid: "", nm: "", gn: "" }); T.refresh("xmList"); };
+    $$("[data-xls]", el).forEach((b) => b.onclick = () => { const srt = sortRows(rows, b.dataset.xls, (r) => r.gn); rows.length = 0; rows.push(...srt); after(); T.toast(`Sorted by ${SORTS.find((x) => x[0] === b.dataset.xls)[1].toLowerCase()}`); });
+    const clr = $("#xl-clear", el); if (clr) clr.onclick = () => { if (!confirm(`Clear the student list of ${T.baseCode(sel)}? The marks already entered in each test are kept.`)) return; rows.length = 0; after(); };
+    $("#xl-tpl", el).onclick = async () => {
+      await T.importer.lib("xlsx");
+      const ws = L.length ? XLSX.utils.json_to_sheet(L.map((r) => ({ "Student ID": r.sid, "Student name": r.nm, Gender: r.gn }))) : XLSX.utils.aoa_to_sheet([["Student ID", "Student name", "Gender"]]);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Students"); XLSX.writeFile(wb, `students_${T.baseCode(sel)}.xlsx`.replace(/[^\w.-]+/g, "_"));
+    };
+    const fi = $("#xl-file", el), prev = $("#xl-prev", el);
+    fi.onchange = async () => {
+      const f = fi.files[0]; if (!f) return;
+      try {
+        await T.importer.lib("xlsx");
+        const wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
+        let got = null;
+        for (const sh of wb.SheetNames) { got = readList(XLSX.utils.sheet_to_json(wb.Sheets[sh], { header: 1, defval: "", raw: false })); if (!got.err) break; }
+        if (got.err) { prev.innerHTML = `<div class="alert-box"><span class="alert-ic">⚠</span><span>${esc(got.err)}</span></div>`; return; }
+        prev.innerHTML = `<div class="info-box"><span>${esc(got.note)}${L.length ? ` It will replace the ${L.length} students in the list now.` : ""}</span><button class="btn sm primary" id="xl-use">Use this list</button></div>
+          <div class="bp-wrap"><table class="tbl xl-tbl" style="max-width:640px"><thead><tr><th>Student ID</th><th>Student name</th><th class="ctr">Gender</th></tr></thead><tbody>${got.list.slice(0, 8).map((r) => `<tr><td>${esc(r.sid)}</td><td>${esc(r.nm)}</td><td class="ctr">${esc(r.gn || "-")}</td></tr>`).join("")}</tbody></table></div>
+          ${got.list.length > 8 ? `<p class="note">... and ${got.list.length - 8} more.</p>` : ""}`;
+        $("#xl-use", prev).onclick = () => { rows.length = 0; rows.push(...got.list); after(); T.toast(`Student list taken from ${f.name}: ${got.list.length} students`); };
+      } catch (e) { prev.innerHTML = `<div class="alert-box"><span class="alert-ic">⚠</span><span>The file could not be read (${esc(e.message || e)}).</span></div>`; }
+    };
+  };
+
+  T.marksParts = { readUpload, outcomeResults, kpiOf, readList, gNorm, sortRows };
   T.renderMarksPage = function (sel) {
     const content = $("#content");
     if (!sel) {
@@ -504,7 +634,7 @@
         <div class="row-btns"><a class="btn primary" href="#course-setup">Go to Course setup</a></div></div>`;
       return;
     }
-    content.innerHTML = `<section class="card" id="sec-irmk"></section><section class="card" id="sec-xmenter"></section>`;
-    T.refresh("irMarks");
+    content.innerHTML = `<section class="card" id="sec-irmk"></section><section class="card" id="sec-xmlist"></section><section class="card" id="sec-xmenter"></section>`;
+    T.refresh("irMarks", "xmList");
   };
 })();

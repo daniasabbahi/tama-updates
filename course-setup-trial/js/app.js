@@ -83,7 +83,7 @@
     "exam-results": { name: "Exam results and item analysis", sub: "The item analysis of each test (difficulty, discrimination and distractors of every question, linked to the SLOs) and the KPI of questions with partial marks. The students' marks have their own page. Everything saves itself.",
       jump: [["h-irtest", "Choose the test"], ["h-irmcq", "MCQ item analysis"], ["h-irslo", "Results by SLO"], ["h-irpart", "Partial marks"]] },
     "student-marks": { name: "Student marks", sub: "The marks each student got in each test or assessment: per question, as one total, or per sub-category, with the mark on the paper converted for you. Everything saves itself.",
-      jump: [["h-irmk", "Assessments"], ["h-xmexam", "Enter the marks"]] },
+      jump: [["h-irmk", "Assessments"], ["h-xmlist", "Student list"], ["h-xmexam", "Enter the marks"]] },
   };
   T.page = () => (PAGES[location.hash.slice(1)] ? location.hash.slice(1) : "course-setup");
   function renderShell() {

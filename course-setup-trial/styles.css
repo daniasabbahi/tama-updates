@@ -590,3 +590,12 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .mg-tbl th.mg-conv { background: var(--cream); color: var(--navy); }
 .mg-tbl td.mg-conv { background: var(--cream-soft); color: var(--navy); }
 .mg-tbl td.mg-tot { background: #eef3fa; }
+
+/* student list + sorting (Dania 2026-11-22) */
+.xm-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 8px; }
+.xm-tools .lbl { font-size: 13px; font-weight: 600; color: var(--navy); }
+.xl-tbl td.ctr select.cell { text-align: center; text-align-last: center; }
+.xl-tbl th, .xl-tbl td { vertical-align: middle; }
+.xl-tbl th.ctr { text-align: center; }
+.kcard.g-m .big { color: var(--navy); }
+.kcard.g-f .big { color: var(--mauve-dark); }
