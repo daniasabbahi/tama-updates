@@ -691,3 +691,9 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .st-nm { font-size: 12.5px; color: var(--soft); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-forms { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
 .st-form { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+
+/* tick boxes inside a field box keep their normal size and sit next to their text (Dania 2026-11-27) */
+.tick-line input[type=checkbox], .tick-line input[type=radio] { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; flex: 0 0 auto; accent-color: var(--mauve); cursor: pointer; }
+.tick-line { justify-content: flex-start; text-align: left; cursor: pointer; }
+.ir-kinds { flex-direction: column; align-items: flex-start; gap: 8px; }
+.ir-kinds .tick-line { margin: 0; font-size: 14px; }
