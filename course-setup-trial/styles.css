@@ -697,3 +697,26 @@ tr.sub-bad td { background: #fff; padding: 4px 6px; }
 .tick-line { justify-content: flex-start; text-align: left; cursor: pointer; }
 .ir-kinds { flex-direction: column; align-items: flex-start; gap: 8px; }
 .ir-kinds .tick-line { margin: 0; font-size: 14px; }
+
+/* Sign-in (Dania 2026-11-28) */
+body.locked .side, body.locked .main, body.locked .scrim { display: none !important; }
+.gate { position: fixed; inset: 0; z-index: 1000; overflow-y: auto; background: var(--page); display: flex; align-items: flex-start; justify-content: center; padding: 48px 16px; }
+.gate-card { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.gate-band { background: linear-gradient(135deg, var(--navy-deep), var(--navy)); color: #fff; padding: 22px 24px; }
+.gate-band small { color: #c9d6e6; font-size: 12px; letter-spacing: .03em; }
+.gate-band h1 { margin: 4px 0 0; font: 700 28px var(--serif); color: #fff; }
+.gate-note, .gate-view, .gate-err { margin: 16px 24px; }
+.gate-note { color: var(--soft); font-size: 14px; }
+.gate-view label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+.gate-view input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--field); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
+.gate-tabs { display: flex; gap: 6px; background: var(--cream-soft); border-radius: 10px; padding: 4px; }
+.gate-tabs button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 8px; font: 600 14px var(--font); color: var(--soft); cursor: pointer; }
+.gate-tabs button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(20,30,50,.1); }
+.gate-go { width: 100%; margin-top: 16px; justify-content: center; }
+.gate-muted { color: var(--soft); font-size: 13px; }
+.gate-muted a { color: var(--mauve-dark); }
+.gate-err { margin-top: 0; padding: 10px 12px; border: 2px solid #c77a1e; background: #fff4e5; border-radius: 10px; font-weight: 600; color: #7a4a0c; font-size: 13.5px; }
+.who-bar { font-size: 12.5px; color: var(--soft); white-space: nowrap; }
+.who-bar a { color: var(--mauve-dark); }
+.who-trial { color: var(--ok); }
+@media (max-width: 760px) { .who-bar { display: none; } }

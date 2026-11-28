@@ -131,7 +131,8 @@
   T.sections.setData = function () {
     const el = $("#sec-stdata"); if (!el) return;
     el.innerHTML = `<div class="sec-head" id="h-stdata"><div><h2>Your data</h2><p class="sub">Everything you enter stays on this computer. From here you can download a backup, open a TAMA data file, keep a copy in a folder, or start again.</p></div></div>
-      <div class="row-btns"><button class="btn primary" id="st-data">Open “Your data”</button></div>`;
+      <div class="row-btns"><button class="btn primary" id="st-data">Open “Your data”</button>${window.__tamaSignOut ? `<button class="btn" id="st-out">Sign out</button>` : ""}</div>`;
+    const so = $("#st-out", el); if (so) so.onclick = () => window.__tamaSignOut();
     $("#st-data", el).onclick = () => { const b = $("#btn-data"); if (b) b.click(); };
   };
 
