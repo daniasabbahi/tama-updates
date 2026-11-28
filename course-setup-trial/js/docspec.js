@@ -216,5 +216,5 @@
     return z.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
 
-  T.docSpec = { has: (id) => id in DOCS, status, html, bind, value, parts, fillSpec, DOCS, store, isPG, cellSet, rowsFill };
+  T.docSpec = { afterColon, has: (id) => id in DOCS, status, html, bind, value, parts, fillSpec, DOCS, store, isPG, cellSet, rowsFill };
 })();

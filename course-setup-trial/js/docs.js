@@ -118,19 +118,24 @@
     }
   }
   function fillRows(tbl, first, data, writer) {
-    const trs = kids(tbl, "tr"), tmpl = trs.slice(first); if (!tmpl.length) return;
+    const trs = kids(tbl, "tr");
+    while (first < trs.length - 1 && trs[first].getElementsByTagNameNS(WNS, "vMerge").length) first++;   // a two-row heading (merged cells) stays the heading
+    const tmpl = trs.slice(first); if (!tmpl.length) return;
     const proto = tmpl[0].cloneNode(true); tmpl.slice(1).forEach((tr) => tbl.removeChild(tr));
     let last = tmpl[0]; const all = [last];
     for (let i = 1; i < Math.max(data.length, 1); i++) { const nt = proto.cloneNode(true); tbl.insertBefore(nt, last.nextSibling); last = nt; all.push(nt); }
     all.forEach((tr, i) => { if (i < data.length) writer(kids(tr, "tc"), data[i]); });
   }
-  async function courseReport(sel) {
+  const AR_LABELS = { "اسم المقرر": "course_name", "رمز المقرر": "course_code", "القسم العلمي": "department", "البرنامج الأكاديمي": "program", "الكلية": "faculty", "المؤسسة": "institution", "العام الدراسي": "year", "الفصل الدراسي": "term", "أستاذ المقرر": "instructor", "منسق المقرر": "course_director", "عدد الشعب": "sections" };
+  const pgByProgram = (sel) => ["Master", "Doctor of Philosophy"].includes(T.s(ci(sel).program).trim());
+  async function courseReport(sel, lang) {
+    const ar = lang === "ar";
     await T.importer.lib("jszip");
-    const buf = await (await fetch("assets/tp154.docx")).arrayBuffer(), z = await JSZip.loadAsync(buf);
+    const buf = await (await fetch(ar ? `assets/tp154_ar_${pgByProgram(sel) ? "pg" : "ug"}.docx` : "assets/tp154.docx")).arrayBuffer(), z = await JSZip.loadAsync(buf);
     const doc = new DOMParser().parseFromString(await z.file("word/document.xml").async("string"), "application/xml");
     const body = doc.getElementsByTagNameNS(WNS, "body")[0], Tb = kids(body, "tbl"), c = ci(sel), d = crs(sel), g = grades(sel);
     // cover: postgraduate courses get the TPG-154 cover picture (first-page header)
-    if (isPG(sel)) {
+    if (!ar && isPG(sel)) {
       try {
         const sp = [...doc.getElementsByTagNameNS(WNS, "headerReference")].find((h) => h.getAttributeNS(WNS, "type") === "first" || h.getAttribute("w:type") === "first");
         const rid = sp && (sp.getAttribute("r:id") || sp.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id"));
@@ -151,6 +156,19 @@
         boxes.slice(0, 2).forEach((t, i) => { const want = br ? i === 1 : i === 0; t.textContent = t.textContent.replace("☒", "☐").replace("☐", want ? "☒" : "☐"); });
       } else if (label in vals) cellSet(tc, T.s(vals[label]), { label: true });
     }));
+    if (ar && T.docSpec) {   // the Arabic cover: labels in Arabic (TAMA dr_cr_arabic)
+      kids(Tb[0], "tr").forEach((tr) => kids(tr, "tc").forEach((tc) => {
+        const lab = cellText(tc).split(":")[0].trim();
+        if (lab in AR_LABELS) { const k = AR_LABELS[lab]; T.docSpec.afterColon(tc, k === "course_code" ? T.baseCode(sel) : k === "term" ? T.termLabel(c.term) : T.s(c[k])); }
+        else if (lab.startsWith("عدد الطلاب")) T.docSpec.afterColon(tc, g ? String(lab.includes("بدأوا") ? g.started : g.completed) : "");
+        else if (lab.startsWith("تاريخ إعداد التقرير")) T.docSpec.afterColon(tc, reportDate(sel));
+        else if (lab.startsWith("مكان تقديم المقرر")) {
+          const br = /branch|فرع/i.test(T.s(c.location)), boxes = [...tc.getElementsByTagNameNS(WNS, "t")].filter((t) => /[☐☒]/.test(t.textContent));
+          if (boxes.length) boxes.slice(0, 2).forEach((t, i) => { const want = br ? i === 1 : i === 0; t.textContent = t.textContent.replace("☒", "☐").replace("☐", want ? "☒" : "☐"); });
+          else T.docSpec.afterColon(tc, T.s(c.location));
+        }
+      }));
+    }
     // A1 grades: row 2 numbers, row 3 percentages
     if (g) {
       const st = ["Denied Entry", "In Progress", "Incomplete", "Pass", "Fail", "Withdrawn"];
@@ -186,7 +204,7 @@
     fillRows(Tb[5], 1, tps.length ? tps : [["None", {}]], (cells, [t, v]) => [t, v.reason, v.impact, v.action].forEach((x, i) => cells[i] && cellSet(cells[i], T.s(x), { size: 9 })));
     // D, E, F
     const a = acts(sel), cur = offering(sel), prev = a.filter((r) => T.s(r.offering) !== cur), plan = a.filter((r) => T.s(r.offering) === cur);
-    fillRows(Tb[6], 1, prev.length ? prev : [{}], (cells, r) => [r.action, T.s(r.pct_achieved).trim() ? `${T.s(r.pct_achieved).trim()}%` : "", r.comments].forEach((x, i) => cells[i] && cellSet(cells[i], T.s(x), { size: 9 })));
+    fillRows(Tb[6], 1, prev.length ? prev : [{}], (cells, r) => { const v = [r.action, T.s(r.pct_achieved).trim() ? `${T.s(r.pct_achieved).trim()}%` : "", r.comments]; if (ar) v.reverse(); /* the Arabic form has these columns the other way round */ v.forEach((x, i) => cells[i] && cellSet(cells[i], T.s(x), { size: 9 })); });
     cellSet(kids(kids(Tb[7], "tr")[0], "tc")[0], T.s((d.eval || {}).text), { size: 10 });
     const t8 = kids(Tb[8], "tr"), merged = (tr) => tr.getElementsByTagNameNS(WNS, "vMerge").length > 0, fd = t8.length > 2 && (merged(t8[1]) || cellText(kids(t8[1], "tc")[0]).startsWith("Recommendations")) ? 2 : 1;
     fillRows(Tb[8], fd, plan.length ? plan : [{}], (cells, r) => [r.gap, r.action, r.support].forEach((x, i) => cells[i] && cellSet(cells[i], T.s(x), { size: 9 })));
@@ -275,8 +293,8 @@
         ${miss.length ? `<div class="alert-box"><span class="alert-ic">⚠</span><span><b>${miss.length} part(s) not filled yet:</b> ${miss.map((x) => `${esc(x[0])} (<a href="#${x[2]}">${esc(x[3])}</a>)`).join("; ")}.</span></div>` : `<p class="ok-text">✓ Every part of the Course Report is filled.</p>`}
         <div class="bp-wrap"><table class="tbl" style="max-width:720px"><thead><tr><th>Part of the report</th><th style="width:110px">Filled?</th><th>Where it is filled</th></tr></thead><tbody>
         ${s.map(([l, ok, h, w]) => `<tr><td>${esc(l)}</td><td>${ok ? '<span class="ok-text">✓ Yes</span>' : '<span class="warn-text">Not yet</span>'}</td><td><a href="#${h}">${esc(w)}</a></td></tr>`).join("")}</tbody></table></div>
-        <div class="row-btns"><button class="btn primary" id="dr-cr">⬇ Course Report (Word, English)</button></div>
-        <p class="note">The Arabic version of the Course Report comes in the next update.</p>`;
+        <div class="row-btns"><button class="btn primary" id="dr-cr">⬇ Course Report (Word, English)</button><button class="btn" id="dr-cra">⬇ تقرير المقرر (Word, العربية)</button></div>
+        <p class="note">The Arabic form has the same numbers and tables. The text boxes (comments, recommendations, actions) go in as you wrote them, so write them in Arabic for that file.</p>`;
     } else if (open === "grades") {
       const g = gradeRows(sel);
       inner = g ? `<p class="note">From the <a href="#mark-sheet">Course mark sheet</a>: ${g.rows.length} students, ${g.cols.length} assessments.</p>
@@ -300,6 +318,7 @@
     $("#dr-back", el).onclick = () => { delete ui()[sel]; S.saveUi && S.saveUi(); T.refresh("docBoxes"); };
     const go = (id, fn, name) => { const b = $(id, el); if (b) b.onclick = async () => { b.disabled = true; try { const blob = await fn(sel); if (blob) dl(blob, name); } catch (e) { T.toast(`The file could not be made (${e.message || e}).`, "warn"); } b.disabled = false; }; };
     go("#dr-cr", courseReport, `Course_Report_${tag(sel)}.docx`);
+    go("#dr-cra", (s) => courseReport(s, "ar"), `Course_Report_Arabic_${tag(sel)}.docx`);
     go("#dr-gw", gradesDocx, `student_grades_${tag(sel)}.docx`);
     go("#dr-gx", gradesXlsx, "");
     go("#dr-cw", cloDocx, `clo_achievement_level_${tag(sel)}.docx`);
