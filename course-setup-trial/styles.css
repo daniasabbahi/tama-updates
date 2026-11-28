@@ -721,3 +721,10 @@ body.locked .side, body.locked .main, body.locked .scrim { display: none !import
 .who-trial { color: var(--ok); }
 @media (max-width: 760px) { .who-bar { display: none; } }
 .gate[hidden] { display: none !important; }
+
+/* Course Specification / Syllabus parts */
+.ds-from { font-weight: 400; font-size: 12px; color: var(--soft); margin-left: 6px; }
+.ds-from a { color: var(--mauve-dark); }
+.ds-ro .ds-val { padding: 9px 12px; border: 1px dashed var(--field); border-radius: 10px; background: var(--cream-soft); font-size: 14px; line-height: 1.5; }
+.ds-tbl td, .ds-tbl th { vertical-align: top; }
+.ds-tbl textarea.cell { min-width: 140px; }

@@ -249,11 +249,12 @@
     ["course_spec", "📘", "Course Specification", "The official NCAAA form (TP-153 / TPG-153): identity, CLOs, content, assessment, resources."],
     ["syllabus", "📗", "Syllabus", "The course syllabus for students: instructor, description, CLOs, weekly topics, assessment, policies."],
   ];
-  const SOON = new Set(["course_spec", "syllabus"]);
+  const SOON0 = new Set(["course_spec", "syllabus"]), SOON = { has: (id) => SOON0.has(id) && !(T.docSpec && T.docSpec.has(id)) };
   function boxStatus(sel, id) {
     if (id === "course_report") { const s = crStatus(sel), k = s.filter((x) => x[1]).length; return [k === s.length, `${k} of ${s.length} parts filled`]; }
     if (id === "grades") { const v = sheet(sel); return [!!v, v ? `${v.rows.length} students` : "No marks yet"]; }
     if (id === "clo_level") { const r = cloRows(sel), m = r.filter((x) => x.actual !== null && x.actual !== undefined).length; return [r.length && m === r.length, r.length ? `${m} of ${r.length} CLOs measured` : "No CLOs yet"]; }
+    if (T.docSpec && T.docSpec.has(id)) return T.docSpec.status(sel, id);
     return [false, "Coming in the next update"];
   }
   const ui = () => (S.ui.docOpen = S.ui.docOpen || {});
@@ -290,6 +291,8 @@
         ${rows.map((r) => `<tr><td class="ctr">${r.no}</td><td>${esc(r.text)}</td><td>${esc(r.methText)}</td><td class="ctr">${f(r.target)}</td><td class="ctr">${f(r.actual)}</td><td>${achieved(r) === "Achieved" ? '<span class="ok-text">✓ Achieved</span>' : achieved(r) === "Not achieved" ? '<span class="warn-text">Not achieved</span>' : '<span class="note">Not measured</span>'}</td></tr>`).join("")}</tbody></table></div>
         <div class="row-btns"><button class="btn primary" id="dr-cw">⬇ Word</button><button class="btn" id="dr-cx">⬇ Excel</button></div>`
         : `<p class="note">This course has no CLOs yet. Add them in <a href="#course-setup">Course setup</a>.</p>`;
+    } else if (T.docSpec && T.docSpec.has(open)) {
+      inner = T.docSpec.html(sel, open);
     } else {
       inner = `<p class="note">This document is being rebuilt and comes in the next update. It will be filled from Course setup, Lectures & SLOs and the Assessment plan, in English or Arabic.</p>`;
     }
@@ -301,6 +304,7 @@
     go("#dr-gx", gradesXlsx, "");
     go("#dr-cw", cloDocx, `clo_achievement_level_${tag(sel)}.docx`);
     go("#dr-cx", cloXlsx, "");
+    if (T.docSpec && T.docSpec.has(open)) T.docSpec.bind(el, sel, open, dl);
   };
 
   T.renderDocsPage = function (sel) {
@@ -313,5 +317,5 @@
     content.innerHTML = `<section class="card" id="sec-docs"></section>`;
     T.refresh("docBoxes");
   };
-  T.docParts = { crStatus, courseReport, gradesDocx, cloDocx, gradeRows, cellSet, fillRows };
+  T.docParts = { crStatus, courseReport, gradesDocx, cloDocx, gradeRows, cellSet, fillRows, isPG, reportDate };
 })();
