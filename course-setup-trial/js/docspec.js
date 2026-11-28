@@ -86,9 +86,13 @@
   /* ---------------------------------------------------------------- the page */
   function html(sel, doc) {
     const pg = isPG(sel), prog = ci(sel, "program");
-    let out = `<p class="note">Program of this course in Course setup: <b>${esc(prog || "not chosen yet")}</b>, so the <b>${pg ? "postgraduate (TPG-153)" : "undergraduate (TP-153)"}</b> NCAAA form is used. Parts marked “from …” come from that page and change only there; type the rest here. Everything saves itself.</p>
+    if (doc !== "course_spec") return htmlParts(sel, doc, `<p class="note">Parts marked “from …” come from that page and change only there; type the rest here. The policies start with the usual KAU text: change them as you need. Everything saves itself.</p>
+      <div class="row-btns"><button class="btn primary" data-dsdl="${doc}">⬇ ${doc === "syllabus" ? "Syllabus" : esc(doc)} (Word)</button></div>`);
+    return htmlParts(sel, doc, `<p class="note">Program of this course in Course setup: <b>${esc(prog || "not chosen yet")}</b>, so the <b>${pg ? "postgraduate (TPG-153)" : "undergraduate (TP-153)"}</b> NCAAA form is used. Parts marked “from …” come from that page and change only there; type the rest here. Everything saves itself.</p>
       <div class="row-btns"><button class="btn primary" data-dsdl="en">⬇ Course Specification (Word, English)</button><button class="btn" data-dsdl="ar">⬇ توصيف المقرر (Word, العربية)</button></div>
-      <p class="note">The Arabic form gets the same data; write the typed parts in Arabic for that file.</p>`;
+      <p class="note">The Arabic form gets the same data; write the typed parts in Arabic for that file.</p>`);
+  }
+  function htmlParts(sel, doc, out) {
     DOCS[doc].forEach((p) => {
       if (p[0] === "#") { out += `<h3 class="qm-h">${esc(p[1])}</h3>`; return; }
       const [pid, label, kind, , src] = p, v = value(sel, doc, p), from = src ? `<span class="ds-from">from <a href="#${src[1]}">${esc(src[0])}</a></span>` : "";
@@ -119,6 +123,7 @@
     });
     $$("[data-dsdl]", el).forEach((b) => b.onclick = async () => {
       const lang = b.dataset.dsdl; b.disabled = true;
+      if (T.docBuilders && T.docBuilders[lang]) { try { dl(await T.docBuilders[lang](sel), `${lang === "syllabus" ? "Syllabus" : lang}_${T.baseCode(sel).replace(/[^\w.-]+/g, "_")}.docx`); } catch (e) { T.toast(`The file could not be made (${e.message || e}).`, "warn"); } b.disabled = false; return; }
       try { dl(await fillSpec(sel, lang), `${lang === "ar" ? "Course_Specification_Arabic" : "Course_Specification"}_${T.baseCode(sel).replace(/[^\w.-]+/g, "_")}.docx`); }
       catch (e) { T.toast(`The file could not be made (${e.message || e}).`, "warn"); }
       b.disabled = false;
