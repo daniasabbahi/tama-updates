@@ -720,3 +720,4 @@ body.locked .side, body.locked .main, body.locked .scrim { display: none !import
 .who-bar a { color: var(--mauve-dark); }
 .who-trial { color: var(--ok); }
 @media (max-width: 760px) { .who-bar { display: none; } }
+.gate[hidden] { display: none !important; }
